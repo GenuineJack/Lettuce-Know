@@ -13,6 +13,7 @@ api/recalls.js           — optional Vercel serverless function, proxies the US
 api/fdc.js               — Vercel serverless function, proxies USDA FoodData Central and holds the API key
 icons/                   — app icons (regular + maskable, for Android adaptive icons)
 brand/                   — logo source files (mark.svg, lockup.svg) for anything outside the app (store listing, README, etc.)
+test/                    — browser test suite (dev only; excluded from the deploy by .vercelignore)
 ```
 
 ## How it works
@@ -22,12 +23,25 @@ brand/                   — logo source files (mark.svg, lockup.svg) for anythi
 3. App checks the product/brand against a locally cached index of recent FDA (`api.fda.gov/food/enforcement`) and USDA FSIS recalls, refreshed every 12 hours and stored in `localStorage`.
 4. If ingredient data was found, it's checked against `eu-us-data.js` for known US/EU regulatory divergence (titanium dioxide, potassium bromate, etc.) — stated as regulatory fact, not a safety score.
 5. Result renders as one of: recalled (strong or possible match), clear, no data, or offline/error — each state is visually and textually distinct so an outage never gets confused with a clean result.
+6. If the product's brand appears in two or more recall records in the window, the result also shows a brand recall history: how many records, the date span, and the most recent reason.
 
 ## Before deploying
 
 - **FDC_API_KEY**: get a free key at https://api.data.gov/signup/ and set it as an environment variable named `FDC_API_KEY` in the Vercel project settings — it is read server-side by `api/fdc.js`, so it never reaches the browser and never goes in git. With no key set, the proxy falls back to `DEMO_KEY` (30 req/hr), so the app still works, just rate-limited. There is no key to edit in `index.html`; it calls `/api/fdc` instead of FoodData Central directly, and a failed lookup degrades to Open Food Facts as before.
 - **USDA FSIS CORS**: the FSIS recall API blocked at least one direct fetch attempt during development (bot detection). If the "USDA" status tag on the home screen shows red/unavailable after deploying, switch on the included proxy: set `const PROXY = "/api/recalls";` near the top of `index.html`. The proxy in `api/recalls.js` is written for Vercel's serverless function format.
 - **HTTPS required for camera**: barcode scanning needs `https://` — won't work from a local `file://` open. Test on the deployed URL, not locally, if checking camera behavior.
+
+## Tests
+
+```
+cd test && npm install && npm test
+```
+
+Drives the real app in Chromium with every external API stubbed, so it runs
+offline and hermetically. Covers the flows, each verdict and failure state,
+injection through feed data, corrupt storage, the navigation race conditions,
+four breakpoints, and the service worker. `api/fdc.js` runs in-process the way
+Vercel would run it, with only its upstream call stubbed.
 
 ## Known limitations (by design, not oversights)
 
@@ -37,7 +51,7 @@ brand/                   — logo source files (mark.svg, lockup.svg) for anythi
 
 ## Not yet built
 
-- **Brand recall history** — surfacing whether a product's brand has a pattern of repeat recalls (not just whether this exact product is currently recalled). Would likely mean aggregating the existing FDA/USDA index by `firm` across a longer time window and showing a frequency signal on the result screen. Flagged by the project owner as the next thing to tackle.
+- **Longer history window** — brand recall history is now on the result screen, but it only spans `WINDOW_DAYS` (400), because that's all the index holds. Showing a multi-year pattern would mean a second, coarser fetch kept separately from the main index.
 
 ## Origin
 

@@ -1,0 +1,4 @@
+# Dev-only. Keeping the suite out of the deployment also keeps the project root
+# free of a package.json, which is what lets Vercel treat this as a zero-config
+# static site with serverless functions.
+test/

@@ -96,11 +96,15 @@ input[aria-invalid="true"]:focus-visible{outline-color:var(--red)}
    frame; on the result screen it resolves into the verdict icon. */
 .ring-wrap{display:flex;justify-content:center;margin:var(--s2) 0 var(--s5)}
 .ring{width:96px;height:96px;position:relative}
-.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
-.ring circle{stroke-dasharray:277;stroke-dashoffset:277;animation:ring-draw .7s cubic-bezier(.4,0,.2,1) forwards}
+/* Scoped to the direct child: the -90deg start-angle rotation belongs to the
+   ring track only. Unscoped it also hit the icon inside .ring-icon, which
+   rendered the verdict checkmark on its side as a chevron. */
+.ring > svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring > svg circle{stroke-dasharray:277;stroke-dashoffset:277;animation:ring-draw .7s cubic-bezier(.4,0,.2,1) forwards}
 @keyframes ring-draw{to{stroke-dashoffset:0}}
-.ring-icon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:34px;
+.ring-icon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   animation:pop .35s cubic-bezier(.34,1.56,.64,1) .45s both}
+.ring-icon svg{width:38px;height:38px}
 @keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 
 .verdict{border-radius:var(--r-xl);padding:var(--s6);border:1px solid;text-align:center}
@@ -189,6 +193,30 @@ input[aria-invalid="true"]:focus-visible{outline-color:var(--red)}
 #toast .t-msg{flex:1;min-width:0;line-height:1.4}
 #toast button{width:auto;min-height:40px;padding:var(--s2) var(--s3);font-size:14px;background:none;color:var(--green);border-radius:var(--r-sm)}
 
+/* About sheet — native <dialog> gives focus trapping and Esc for free. */
+dialog#about{border:0;padding:0;background:transparent;color:var(--fg);
+  width:min(460px,calc(100vw - 24px));max-width:100%;
+  /* the `*` reset above zeroes the UA's margin:auto, which is what centres a modal dialog */
+  margin:auto}
+dialog#about::backdrop{background:rgba(4,14,10,.74)}
+.sheet{background:var(--card);border:1px solid var(--line);border-radius:var(--r-xl);
+  padding:var(--s6);max-height:82dvh;overflow:auto;text-align:left}
+.sheet-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s4)}
+.sheet h3{margin-top:var(--s5);margin-bottom:var(--s2);color:var(--green)}
+.sheet p{font-size:14px;line-height:1.6;color:var(--dim)}
+.sheet .list{font-size:14px}
+.icon-btn{width:40px;height:40px;min-height:40px;padding:0;flex-shrink:0;background:none;
+  color:var(--dim);border-radius:50%;display:inline-flex;align-items:center;justify-content:center}
+.icon-btn:active{background:var(--card-2)}
+@media (hover:hover){.icon-btn:hover{background:var(--card-2);color:var(--fg)}}
+.topbar-actions{display:flex;align-items:center;gap:var(--s1)}
+.made{text-align:center;margin-top:var(--s5);font-size:12.5px;color:var(--dim-2);line-height:1.6}
+.scan-frame{position:relative}
+.torch{position:absolute;right:var(--s3);bottom:var(--s3);z-index:2;width:44px;height:44px;min-height:44px;
+  padding:0;border-radius:50%;background:rgba(11,31,22,.78);border:1px solid var(--line);color:var(--fg);
+  display:inline-flex;align-items:center;justify-content:center}
+.torch[aria-pressed="true"]{background:var(--amber);color:#2e2410;border-color:var(--amber)}
+
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
   .ring circle{stroke-dashoffset:0}
@@ -200,6 +228,23 @@ input[aria-invalid="true"]:focus-visible{outline-color:var(--red)}
 <main class="wrap" id="app" aria-busy="false"></main>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <div id="sr-status" class="sr-only" role="status" aria-live="polite"></div>
+<dialog id="about" aria-labelledby="about-h">
+  <div class="sheet">
+    <div class="sheet-head">
+      <h2 id="about-h">What this does</h2>
+      <button class="icon-btn" data-act="about-close" aria-label="Close">&#10005;</button>
+    </div>
+    <p>Scan a food barcode and Lettuce Know checks it against active FDA and USDA recall notices, then flags any ingredients the US and EU regulate differently.</p>
+    <h3>Where the data comes from</h3>
+    <ul class="list">
+      <li>Recalls: openFDA and USDA FSIS, refreshed every 12 hours.</li>
+      <li>Products: Open Food Facts and USDA FoodData Central.</li>
+    </ul>
+    <h3>What it can't tell you</h3>
+    <p>Recalls are matched on brand and product name, not an exact barcode link &mdash; no public database maps one to the other. So &ldquo;no recall found&rdquo; means nothing matched, not that a product is certified safe. The EU/US notes state what each regulator permits, not a safety score.</p>
+    <p style="margin-top:var(--s4)">Always check the lot code and date on your own package before deciding.</p>
+  </div>
+</dialog>
 <noscript>
   <div class="wrap" style="padding-top:40px">
     <h1>Lettuce Know</h1>
@@ -351,10 +396,63 @@ async function buildIndex(force) {
   if (b.status === "fulfilled") { out.rows.push(...b.value); out.usda = true; }
   if (out.rows.length > MAX_ROWS) out.rows = out.rows.slice(0, MAX_ROWS);
   // Persist before adding the derived fields, so they don't double the payload.
-  if (out.fda || out.usda) store.set(CACHE_KEY, out);
+  if (out.fda || out.usda) persistIndex(out);
   prepareRows(out.rows);
   recallIndex = out;
   return out;
+}
+
+/* localStorage quota varies by browser and by what else the origin has stored.
+ * Rather than silently caching nothing on a large index — which would mean
+ * refetching megabytes on every launch — shed the oldest rows and retry, so a
+ * smaller but still useful index survives. */
+function persistIndex(out) {
+  let rows = out.rows;
+  for (let i = 0; i < 5 && rows.length; i++) {
+    if (store.set(CACHE_KEY, { ...out, rows })) return rows.length;
+    rows = rows.slice(0, Math.floor(rows.length * 0.6));
+  }
+  return 0;
+}
+
+/* Brand-level recall history: does this firm show up repeatedly, rather than
+ * just on this one product? Deliberately a count and a date span, not a rate
+ * or a score — the underlying match is by name, so precision would be false. */
+function brandHistory(hits) {
+  const seen = new Set();
+  const recs = [];
+  [...hits.strong, ...hits.possible, ...hits.brand].forEach(h => {
+    const r = h.rec;
+    const key = r.num || `${r.src}|${r.firm}|${r.date}|${String(r.desc).slice(0, 40)}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    recs.push(r);
+  });
+  if (recs.length < 2) return null;
+  recs.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  const dates = recs.map(r => String(r.date || "")).filter(d => d.length === 8).sort();
+  const firms = [...new Set(recs.map(r => String(r.firm || "").trim()).filter(Boolean))];
+  return {
+    count: recs.length,
+    firm: firms.length === 1 ? firms[0] : "",
+    first: dates[0] || "",
+    last: dates[dates.length - 1] || "",
+    recent: recs[0]
+  };
+}
+
+function brandHistoryCard(bh) {
+  if (!bh) return "";
+  const who = bh.firm ? esc(bh.firm) : "This brand";
+  const span = bh.first && bh.last && bh.first !== bh.last
+    ? `between ${fmtDate(bh.first)} and ${fmtDate(bh.last)}`
+    : (bh.last || bh.first) ? `on ${fmtDate(bh.last || bh.first)}` : "in the last year";
+  return `<div class="card" style="margin-top:var(--s4)">
+    <div class="label">Brand recall history</div>
+    <p style="font-size:15px;line-height:1.5;font-weight:600">${who} appears in ${bh.count} recall records ${span}.</p>
+    <p class="mini">Most recent: ${esc(bh.recent.reason || "reason not listed")}${bh.recent.date ? ` (${fmtDate(bh.recent.date)})` : ""}.</p>
+    <p class="mini">A brand-level pattern, matched by name. It doesn't mean this product is affected.</p>
+  </div>`;
 }
 
 function score(rec, brandT, nameT) {
@@ -506,6 +604,8 @@ const ICONS = {
   x: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
   q: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
   arrow: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
+  info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="11"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
+  torch: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>`,
   refresh: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>`,
   ext: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`
 };
@@ -584,7 +684,10 @@ function homeView() {
     </section>` : "";
   return `
     <div class="topbar"><div class="brand">${brandMark()}<span class="brand-name">Lettuce Know</span></div>
-      ${installPrompt ? `<button class="linkish" data-act="install">Install</button>` : ""}
+      <div class="topbar-actions">
+        ${installPrompt ? `<button class="linkish" data-act="install">Install</button>` : ""}
+        <button class="icon-btn" data-act="about" aria-label="About Lettuce Know">${iconSpan(ICONS.info, 20)}</button>
+      </div>
     </div>
     <div style="padding-top:var(--s2)">
       <h1 tabindex="-1">We'll tell you.</h1>
@@ -598,14 +701,18 @@ function homeView() {
     </div>
     <div id="srcline">${sourceTags()}</div>
     ${h}
-    <p class="foot">FDA covers most packaged food. USDA FSIS covers meat, poultry, and egg. Ingredient data comes from Open Food Facts and USDA FoodData Central — availability varies by product.</p>`;
+    <p class="foot">FDA covers most packaged food. USDA FSIS covers meat, poultry, and egg. Ingredient data comes from Open Food Facts and USDA FoodData Central — availability varies by product.</p>
+    <p class="made">Built by Jack with <span role="img" aria-label="orange heart">🧡</span></p>`;
 }
 
 function scanView() {
   return `
     ${backBar()}
     <h1 class="sr-only" tabindex="-1">Scan a barcode</h1>
-    <div id="reader"><div class="cam-wait"><div class="spin"></div><span>Starting camera&hellip;</span></div></div>
+    <div class="scan-frame">
+      <div id="reader"><div class="cam-wait"><div class="spin"></div><span>Starting camera&hellip;</span></div></div>
+      <div id="torchslot"></div>
+    </div>
     <p class="sub" style="text-align:center;margin-top:var(--s5)">Hold the barcode inside the frame.</p>
     <div id="scanerr" role="alert"></div>
     <div class="stack" style="margin-top:var(--s5)">
@@ -759,10 +866,11 @@ function resultView(r) {
         </button>
       </div>
       ${r.nameSearch ? "" : divergenceSection(r.divergence, p.ingredientSource)}
-      ${r.hits.brand.length && !strong ? `<p class="mini" style="text-align:center">${r.hits.brand.length} other recall${r.hits.brand.length > 1 ? "s" : ""} from this brand in the last year.</p>` : ""}`;
+      ${brandHistoryCard(brandHistory(r.hits))}`;
   }
 
   if (r.state === "clear") {
+    const bh = brandHistory(r.hits);
     const usdaish = isUsdaish(p);
     const gap = !recallIndex.usda && usdaish;
     body = `
@@ -775,11 +883,11 @@ function resultView(r) {
       </div>
       ${sourceTags()}
       ${r.nameSearch ? "" : divergenceSection(r.divergence, p.ingredientSource)}
-      ${r.hits.brand.length ? `<div class="card" style="margin-top:var(--s4)">
-        <div class="label">Same brand, different products</div>
-        <p class="mini" style="margin-top:0">${r.hits.brand.length} recall${r.hits.brand.length > 1 ? "s" : ""} from this brand in the last year. Not your product, but worth knowing.</p>
-        ${r.hits.brand.slice(0, 2).map(recallCard).join("")}
-      </div>` : ""}
+      ${bh ? `${brandHistoryCard(bh)}${r.hits.brand.slice(0, 2).map(recallCard).join("")}`
+        : r.hits.brand.length ? `<div class="card" style="margin-top:var(--s4)">
+        <div class="label">Same brand, different product</div>
+        <p class="mini" style="margin-top:0">One recall from this brand in the last year. Not your product, but worth knowing.</p>
+      </div>${recallCard(r.hits.brand[0])}` : ""}
       <div class="card" style="margin-top:var(--s4)">
         <div class="label">Worth knowing</div>
         <ul class="list">
@@ -932,6 +1040,7 @@ function renderHomeNow() {
 window.addEventListener("popstate", () => {
   ++token;
   pushed = false;
+  closeAbout();
   stopScanner();
   if (view !== "home") renderHomeNow();
 });
@@ -1036,9 +1145,36 @@ async function goScan() {
       () => {}
     );
     if (t !== token) { await stopScanner(); return; }
+    await mountTorch(inst);
   } catch (e) {
     scanner = null;
     fail(e);
+  }
+}
+
+/* Torch is offered only when the running track actually reports the
+ * capability — support is patchy across browsers and cameras. */
+let torchOn = false;
+async function mountTorch(inst) {
+  torchOn = false;
+  const slot = document.getElementById("torchslot");
+  if (!slot) return;
+  let caps = null;
+  try { caps = inst.getRunningTrackCapabilities(); } catch (e) { return; }
+  if (!caps || !("torch" in caps)) return;
+  slot.innerHTML = `<button class="torch" data-act="torch" aria-pressed="false"
+    aria-label="Toggle flashlight">${iconSpan(ICONS.torch, 20)}</button>`;
+}
+
+async function toggleTorch(_arg, el) {
+  if (!scanner) return;
+  const next = !torchOn;
+  try {
+    await scanner.applyVideoConstraints({ advanced: [{ torch: next }] });
+    torchOn = next;
+    if (el) el.setAttribute("aria-pressed", String(next));
+  } catch (e) {
+    toast("This camera's flashlight isn't available");
   }
 }
 
@@ -1053,6 +1189,20 @@ async function refreshData(_arg, el) {
   const line = document.getElementById("srcline");
   if (line) line.innerHTML = sourceTags();
   else if (el) el.classList.remove("is-loading");
+}
+
+function openAbout() {
+  const d = document.getElementById("about");
+  if (!d) return;
+  // showModal gives focus trapping, Esc-to-close and inertness for free.
+  if (typeof d.showModal === "function") { if (!d.open) d.showModal(); }
+  else d.setAttribute("open", "");
+}
+function closeAbout() {
+  const d = document.getElementById("about");
+  if (!d) return;
+  if (typeof d.close === "function") { if (d.open) d.close(); }
+  else d.removeAttribute("open");
 }
 
 function openSearch(q) {
@@ -1073,7 +1223,8 @@ const ACTIONS = {
   home: goHome, scan: goScan, manual: goManual, "manual-name": goManualName,
   "submit-manual": submitManual, "submit-name": runNameSearch,
   recheck: code => lookup(code), search: q => openSearch(q),
-  refresh: refreshData, install: doInstall
+  refresh: refreshData, install: doInstall,
+  about: openAbout, "about-close": closeAbout, torch: toggleTorch
 };
 
 document.addEventListener("click", e => {
@@ -1091,6 +1242,12 @@ document.addEventListener("submit", e => {
   e.preventDefault();
   const fn = ACTIONS[form.dataset.act];
   if (fn) fn(form.dataset.arg, form);
+});
+
+// Clicking outside the sheet (i.e. on the backdrop) closes it.
+document.addEventListener("click", e => {
+  const d = document.getElementById("about");
+  if (d && d.open && e.target === d) closeAbout();
 });
 
 // Clear a validation error as soon as the user starts correcting it.

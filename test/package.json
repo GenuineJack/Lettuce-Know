@@ -1,0 +1,12 @@
+{
+  "name": "lettuce-know-test",
+  "private": true,
+  "type": "module",
+  "description": "Browser test suite for Lettuce Know. Dev-only; not deployed.",
+  "scripts": {
+    "test": "node run.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.1"
+  }
+}
