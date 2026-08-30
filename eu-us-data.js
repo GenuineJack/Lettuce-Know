@@ -94,16 +94,45 @@ const EU_US_DIVERGENCE = [
   }
 ];
 
+/* Matching is word-boundary aware, not a bare substring test. Short tags
+ * like "ada" and "bha" otherwise hit inside ordinary words — "macadamia"
+ * contains "ada", which used to flag macadamia nuts as containing a dough
+ * conditioner. A false positive here is worse than a miss: the whole panel
+ * is meant to state regulatory fact.
+ */
+const RX_CACHE = new Map();
+function boundaryRx(tag) {
+  let rx = RX_CACHE.get(tag);
+  if (!rx) {
+    const lit = tag.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\s+/g, "[\\s-]+");
+    // Not preceded or followed by another word character, so "ada" matches
+    // "ADA" and "water, ada," but not "macadamia".
+    rx = new RegExp("(?:^|[^a-z0-9])" + lit + "(?![a-z0-9])", "i");
+    RX_CACHE.set(tag, rx);
+  }
+  return rx;
+}
+
 function findDivergence(offAdditiveTags, ingredientsText) {
-  const tagSet = new Set((offAdditiveTags || []).map(t => String(t).toLowerCase().replace(/^en:/, "")));
+  const tagSet = new Set(
+    (Array.isArray(offAdditiveTags) ? offAdditiveTags : [])
+      .map(t => String(t).toLowerCase().replace(/^[a-z]{2}:/, "").trim())
+      .filter(Boolean)
+  );
   const text = String(ingredientsText || "").toLowerCase();
   const hits = [];
   EU_US_DIVERGENCE.forEach(entry => {
     const found = entry.matchTags.some(tag => {
-      const t = tag.toLowerCase();
-      return tagSet.has(t) || [...tagSet].some(x => x.includes(t.replace(/\s/g, "-"))) || text.includes(t);
+      const t = String(tag).toLowerCase();
+      const hyphen = t.replace(/\s+/g, "-");
+      if (tagSet.has(t) || tagSet.has(hyphen)) return true;
+      return text ? boundaryRx(t).test(text) : false;
     });
     if (found) hits.push(entry);
   });
   return hits;
+}
+
+if (typeof module !== "undefined" && module.exports) {
+  module.exports = { EU_US_DIVERGENCE, findDivergence };
 }

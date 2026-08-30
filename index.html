@@ -2,29 +2,35 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1f16">
+<meta name="color-scheme" content="dark">
 <meta name="description" content="Scan a barcode to check FDA and USDA recalls and EU/US ingredient differences.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Lettuce Know">
 <title>Lettuce Know</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script src="eu-us-data.js"></script>
 <style>
 :root{
   --bg:#0b1f16; --bg-2:#0f261b; --card:#123122; --card-2:#16392a; --line:#1e4632; --line-soft:#173a29;
-  --fg:#eef7f0; --dim:#8fac9a; --dim-2:#6c8977;
+  --fg:#eef7f0; --dim:#8fac9a; --dim-2:#86a394;
   --green:#4ade80; --green-dim:#2f7a52; --green-bg:#11331f;
   --amber:#f0b429; --amber-bg:#2e2410; --amber-line:#5c4a1c;
   --red:#f5615c; --red-bg:#2e1616; --red-line:#5c2321;
-  --blue:#5fb0ff;
+
+  /* Spacing scale — 4px base. Every margin/padding below picks from this. */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px; --s7:32px; --s8:40px;
+  /* Radius scale */
+  --r-sm:10px; --r-md:14px; --r-lg:18px; --r-xl:20px; --r-pill:99px;
   font-size:16px;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -32,94 +38,174 @@ html,body{height:100%}
 body{
   font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
   background:radial-gradient(120% 90% at 50% -10%, var(--bg-2), var(--bg) 60%);
-  color:var(--fg); min-height:100dvh; overscroll-behavior:none;
+  background-attachment:fixed;
+  color:var(--fg); min-height:100dvh; overscroll-behavior-y:none;
   -webkit-font-smoothing:antialiased;
 }
 .display{font-family:'Space Grotesk',sans-serif}
-.wrap{max-width:480px;margin:0 auto;padding:0 20px calc(28px + env(safe-area-inset-bottom))}
-.topbar{display:flex;align-items:center;justify-content:space-between;padding:calc(18px + env(safe-area-inset-top)) 0 8px}
-.brand{display:flex;align-items:center;gap:10px}
+.wrap{max-width:480px;margin:0 auto;padding:0 var(--s5) calc(var(--s7) + env(safe-area-inset-bottom))}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);padding:calc(18px + env(safe-area-inset-top)) 0 var(--s2)}
+.brand{display:flex;align-items:center;gap:var(--s3)}
 .brand-mark{width:34px;height:34px;flex-shrink:0}
-.brand-name{font-family:'Space Grotesk';font-weight:700;font-size:17px;letter-spacing:-.01em}
-h1{font-family:'Space Grotesk';font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
-h2{font-family:'Space Grotesk';font-size:22px;font-weight:600;letter-spacing:-.01em;line-height:1.25}
-h3{font-family:'Space Grotesk';font-size:15px;font-weight:600;letter-spacing:-.005em}
-.sub{color:var(--dim);font-size:15px;margin-top:8px;line-height:1.55}
-button{font:inherit;border:0;cursor:pointer;width:100%;border-radius:16px;padding:17px;font-weight:600;font-size:16px;transition:transform .08s ease, opacity .15s ease}
-button:active{transform:scale(.98)}
+.brand-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;letter-spacing:-.01em}
+
+/* Type scale — 28 / 22 / 17 / 15 / 13 / 11, line-heights tuned per step. */
+h1{font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
+h2{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:600;letter-spacing:-.01em;line-height:1.25}
+h3{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;letter-spacing:-.005em;line-height:1.35}
+h1:focus,h2:focus,h3:focus{outline:none}
+.sub{color:var(--dim);font-size:15px;margin-top:var(--s2);line-height:1.55}
+
+/* ---- Buttons: one primitive, three variants, all states defined ---- */
+button{font:inherit;border:0;cursor:pointer;width:100%;border-radius:var(--r-md);padding:16px;
+  font-weight:600;font-size:16px;min-height:52px;position:relative;
+  transition:transform .08s ease, opacity .15s ease, background .15s ease, filter .15s ease}
+button:active:not(:disabled){transform:scale(.98)}
+button:disabled{opacity:.5;cursor:not-allowed;transform:none}
 .primary{background:linear-gradient(135deg,#4ade80,#2fbf6c);color:#06170e;box-shadow:0 8px 24px -8px rgba(74,222,128,.45)}
 .ghost{background:var(--card);color:var(--fg);border:1px solid var(--line)}
-.ghost:active{background:var(--card-2)}
-.text-btn{width:auto;background:none;padding:0;color:var(--dim);font-weight:500;font-size:15px}
-input{width:100%;padding:17px;border-radius:16px;background:var(--card);border:1px solid var(--line);color:var(--fg);font-size:17px;outline:0;font-family:inherit}
-input:focus{border-color:var(--green)}
-.stack>*+*{margin-top:12px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px}
-.tab-row{display:flex;gap:8px;padding:4px;background:var(--card);border:1px solid var(--line);border-radius:14px;margin-top:20px}
-.tab{flex:1;text-align:center;padding:10px 8px;border-radius:11px;font-size:13px;font-weight:600;color:var(--dim);cursor:pointer;transition:all .15s}
-.tab.active{background:var(--card-2);color:var(--fg)}
-.tab .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.ghost:active:not(:disabled){background:var(--card-2)}
+@media (hover:hover){
+  .primary:hover:not(:disabled){filter:brightness(1.07)}
+  .ghost:hover:not(:disabled){background:var(--card-2);border-color:var(--green-dim)}
+  .back:hover,.linkish:hover{color:var(--fg)}
+}
+.btn-inner{display:flex;align-items:center;justify-content:center;gap:9px}
+button.is-loading .btn-inner{opacity:0}
+button.is-loading::after{content:"";position:absolute;inset:0;margin:auto;width:20px;height:20px;
+  border:2.5px solid rgba(0,0,0,.25);border-top-color:currentColor;border-radius:50%;animation:s .7s linear infinite}
+.ghost.is-loading::after{border-color:var(--line);border-top-color:var(--green)}
+
+/* Visible focus ring on every interactive element. */
+:focus-visible{outline:2px solid var(--green);outline-offset:3px;border-radius:var(--s1)}
+
+input{width:100%;padding:16px;border-radius:var(--r-md);background:var(--card);border:1px solid var(--line);
+  color:var(--fg);font-size:17px;font-family:inherit;outline:0;transition:border-color .15s, box-shadow .15s}
+input::placeholder{color:var(--dim-2);opacity:.75}
+input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(74,222,128,.18)}
+input[aria-invalid="true"]{border-color:var(--red)}
+input[aria-invalid="true"]:focus{box-shadow:0 0 0 3px rgba(245,97,92,.2)}
+input[aria-invalid="true"]:focus-visible{outline-color:var(--red)}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.field-hint{font-size:13px;color:var(--dim);margin-top:var(--s2);line-height:1.5}
+
+.stack>*+*{margin-top:var(--s3)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:var(--s5)}
 
 /* Verdict ring — the signature element. Same ring shape as the scan
    frame; on the result screen it resolves into the verdict icon. */
-.ring-wrap{display:flex;justify-content:center;margin:8px 0 20px}
+.ring-wrap{display:flex;justify-content:center;margin:var(--s2) 0 var(--s5)}
 .ring{width:96px;height:96px;position:relative}
 .ring svg{width:100%;height:100%;transform:rotate(-90deg)}
-.ring-icon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:34px}
+.ring circle{stroke-dasharray:277;stroke-dashoffset:277;animation:ring-draw .7s cubic-bezier(.4,0,.2,1) forwards}
+@keyframes ring-draw{to{stroke-dashoffset:0}}
+.ring-icon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:34px;
+  animation:pop .35s cubic-bezier(.34,1.56,.64,1) .45s both}
+@keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 
-.verdict{border-radius:20px;padding:24px;border:1px solid;text-align:center}
+.verdict{border-radius:var(--r-xl);padding:var(--s6);border:1px solid;text-align:center}
 .v-bad{background:var(--red-bg);border-color:var(--red-line)}
 .v-ok{background:var(--green-bg);border-color:var(--green-dim)}
 .v-warn{background:var(--amber-bg);border-color:var(--amber-line)}
-.v-title{font-family:'Space Grotesk';font-size:23px;font-weight:700;letter-spacing:-.01em}
+.v-title{font-family:'Space Grotesk',sans-serif;font-size:23px;font-weight:700;letter-spacing:-.01em}
 .v-bad .v-title{color:var(--red)}.v-ok .v-title{color:var(--green)}.v-warn .v-title{color:var(--amber)}
-.v-body{margin-top:8px;font-size:15px;line-height:1.55;color:var(--fg);opacity:.85;max-width:36ch;margin-left:auto;margin-right:auto}
+.v-body{margin-top:var(--s2);font-size:15px;line-height:1.55;color:var(--fg);opacity:.9;max-width:36ch;margin-left:auto;margin-right:auto}
 
-.row{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--line-soft);font-size:14px}
+.row{display:flex;justify-content:space-between;gap:var(--s4);padding:var(--s3) 0;border-top:1px solid var(--line-soft);font-size:14px}
 .row:first-child{border-top:0;padding-top:0}
-.row span:first-child{color:var(--dim);flex-shrink:0}
-.row span:last-child{text-align:right;min-width:0;word-break:break-word;font-weight:500}
+.row dt{color:var(--dim);flex-shrink:0}
+.row dd{text-align:right;min-width:0;word-break:break-word;font-weight:500}
 .list{list-style:none;font-size:15px;line-height:1.6}
-.list li{padding:12px 0;border-top:1px solid var(--line-soft);opacity:.9;padding-left:22px;position:relative}
+.list li{padding:var(--s3) 0;border-top:1px solid var(--line-soft);opacity:.92;padding-left:22px;position:relative}
 .list li:first-child{border-top:0;padding-top:0}
-.list li::before{content:"→";position:absolute;left:0;color:var(--green-dim)}
-.label{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim-2);font-weight:700;margin-bottom:12px}
+.list li::before{content:"";position:absolute;left:2px;top:1.05em;width:9px;height:2px;background:var(--green);opacity:.65;border-radius:1px}
+.list li:first-child::before{top:.55em}
+.label{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim-2);font-weight:700;margin-bottom:var(--s3)}
 
-#reader{width:100%;border-radius:20px;overflow:hidden;background:#000;min-height:320px;border:1px solid var(--line)}
+#reader{width:100%;border-radius:var(--r-xl);overflow:hidden;background:#000;min-height:320px;
+  max-height:min(64dvh,460px);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center}
 #reader video{width:100%!important;display:block}
+.cam-wait{color:var(--dim);font-size:14px;display:flex;flex-direction:column;align-items:center;gap:var(--s3);padding:var(--s5)}
 
-.hist{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-top:1px solid var(--line-soft)}
-.hist:first-child{border-top:0;padding-top:0}
-.pill{font-size:11px;font-weight:700;padding:5px 10px;border-radius:99px;white-space:nowrap;text-transform:uppercase;letter-spacing:.03em}
+/* Recent scans are actionable — tapping one re-checks it. */
+.hist{display:flex;justify-content:space-between;align-items:center;gap:var(--s3);padding:var(--s3) var(--s2);
+  border-top:1px solid var(--line-soft);width:100%;background:none;border-radius:0;min-height:52px;
+  text-align:left;font-weight:400;font-size:15px;color:var(--fg)}
+.hist:first-of-type{border-top:0}
+.hist:active{background:var(--card)}
+@media (hover:hover){.hist:hover{background:var(--card)}}
+.hist-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pill{font-size:11px;font-weight:700;padding:5px 10px;border-radius:var(--r-pill);white-space:nowrap;text-transform:uppercase;letter-spacing:.03em}
 .p-bad{background:var(--red-bg);color:var(--red)}
 .p-ok{background:var(--green-bg);color:var(--green)}
 .p-warn{background:var(--amber-bg);color:var(--amber)}
 
-.back{background:none;color:var(--dim);padding:0;width:auto;font-size:15px;font-weight:500;margin:18px 0;display:flex;align-items:center;gap:6px}
+.back{background:none;color:var(--dim);width:auto;font-size:15px;font-weight:500;margin:var(--s3) 0 var(--s2) -6px;
+  display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 6px;border-radius:var(--r-sm)}
+.linkish{background:none;color:var(--dim);width:auto;font-size:13px;font-weight:600;padding:var(--s2);min-height:44px;border-radius:var(--r-sm)}
 .spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--green);border-radius:50%;animation:s .8s linear infinite;margin:0 auto}
 @keyframes s{to{transform:rotate(360deg)}}
-.pulse{animation:p 1.6s ease-in-out infinite}
-@keyframes p{0%,100%{opacity:1}50%{opacity:.55}}
-.err{background:var(--red-bg);border:1px solid var(--red-line);color:var(--red);padding:15px;border-radius:14px;font-size:14px;line-height:1.5}
-.src{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;justify-content:center}
-.tag{font-size:11px;padding:6px 11px;border-radius:99px;border:1px solid var(--line);color:var(--dim);font-weight:500}
+.err{background:var(--red-bg);border:1px solid var(--red-line);color:#ffb3b0;padding:14px;border-radius:var(--r-md);font-size:14px;line-height:1.5}
+
+/* Progress steps replace the bare spinner so waits feel intentional. */
+.steps{list-style:none;max-width:260px;margin:var(--s6) auto 0;text-align:left}
+.steps li{display:flex;align-items:center;gap:var(--s3);padding:var(--s2) 0;font-size:14px;color:var(--dim-2)}
+.steps li.done{color:var(--dim)}
+.steps li.active{color:var(--fg);font-weight:600}
+.step-dot{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);flex-shrink:0;
+  display:flex;align-items:center;justify-content:center}
+.steps li.done .step-dot{border-color:var(--green-dim);background:var(--green-dim)}
+.steps li.active .step-dot{border-color:var(--green);animation:p 1.4s ease-in-out infinite}
+.step-dot svg{width:10px;height:10px;color:#06170e}
+@keyframes p{0%,100%{opacity:1}50%{opacity:.45}}
+
+.src{display:flex;gap:var(--s2);margin-top:var(--s4);flex-wrap:wrap;justify-content:center;align-items:center}
+.tag{font-size:11px;padding:6px 11px;border-radius:var(--r-pill);border:1px solid var(--line);color:var(--dim);font-weight:500}
 .tag.up{border-color:var(--green-dim);color:var(--green)}
 .tag.down{border-color:var(--red-line);color:var(--red)}
-.foot{margin-top:28px;font-size:12px;color:var(--dim-2);line-height:1.6;text-align:center}
-.mini{font-size:13px;color:var(--dim);line-height:1.55;margin-top:10px}
-.divergence-card{background:var(--card);border:1px solid var(--amber-line);border-radius:16px;padding:18px;margin-top:12px}
+.tag-skel{width:96px;height:27px;border-radius:var(--r-pill);background:var(--card);border:1px solid var(--line);animation:p 1.4s ease-in-out infinite}
+.foot{margin-top:var(--s7);font-size:12.5px;color:var(--dim-2);line-height:1.6;text-align:center}
+.mini{font-size:13px;color:var(--dim);line-height:1.55;margin-top:var(--s3)}
+.divergence-card{background:var(--card);border:1px solid var(--amber-line);border-radius:var(--r-md);padding:var(--s5);margin-top:var(--s3)}
 .divergence-card h3{color:var(--amber)}
-.eu-us-row{display:flex;gap:10px;margin-top:12px}
-.eu-us-col{flex:1;background:var(--bg-2);border-radius:10px;padding:12px}
-.eu-us-col .k{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim-2);font-weight:700;margin-bottom:4px}
-.eu-us-col .v{font-size:13px;line-height:1.4;font-weight:500}
-.badge-scroll{display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px;-ms-overflow-style:none;scrollbar-width:none}
+.eu-us-row{display:flex;gap:var(--s3);margin-top:var(--s3)}
+.eu-us-col{flex:1;min-width:0;background:var(--bg-2);border-radius:var(--r-sm);padding:var(--s3)}
+.eu-us-col .k{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim-2);font-weight:700;margin-bottom:var(--s1)}
+.eu-us-col .v{font-size:13px;line-height:1.45;font-weight:500;overflow-wrap:anywhere}
+@media (max-width:359px){.eu-us-row{flex-direction:column}}
+.badge-scroll{display:flex;gap:var(--s2);overflow-x:auto;padding:2px 0 var(--s1);-ms-overflow-style:none;scrollbar-width:none}
 .badge-scroll::-webkit-scrollbar{display:none}
-.chip{flex-shrink:0;background:var(--amber-bg);border:1px solid var(--amber-line);color:var(--amber);font-size:12px;font-weight:600;padding:7px 13px;border-radius:99px}
+.chip{flex-shrink:0;background:var(--amber-bg);border:1px solid var(--amber-line);color:var(--amber);font-size:12px;font-weight:600;padding:7px 13px;border-radius:var(--r-pill)}
+.src-link{color:var(--dim);font-size:12px;text-decoration:underline;text-underline-offset:2px}
+.src-link:hover,.src-link:focus-visible{color:var(--green)}
+
+/* Toast — one shared surface for confirmations and update prompts. */
+#toast{position:fixed;left:50%;transform:translateX(-50%) translateY(140%);
+  bottom:calc(var(--s5) + env(safe-area-inset-bottom));z-index:50;width:min(440px,calc(100vw - 32px));
+  background:var(--card-2);border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s3) var(--s4);
+  box-shadow:0 12px 32px -10px rgba(0,0,0,.6);display:flex;align-items:center;gap:var(--s3);
+  font-size:14px;transition:transform .25s cubic-bezier(.4,0,.2,1),opacity .25s;opacity:0;pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0);opacity:1;pointer-events:auto}
+#toast .t-msg{flex:1;min-width:0;line-height:1.4}
+#toast button{width:auto;min-height:40px;padding:var(--s2) var(--s3);font-size:14px;background:none;color:var(--green);border-radius:var(--r-sm)}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  .ring circle{stroke-dashoffset:0}
+}
 </style>
 </head>
 <body>
-<div class="wrap" id="app"></div>
+<a class="sr-only" href="#app">Skip to content</a>
+<main class="wrap" id="app" aria-busy="false"></main>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<div id="sr-status" class="sr-only" role="status" aria-live="polite"></div>
+<noscript>
+  <div class="wrap" style="padding-top:40px">
+    <h1>Lettuce Know</h1>
+    <p class="sub">This barcode checker needs JavaScript to reach the FDA and USDA recall feeds. Please enable it and reload.</p>
+  </div>
+</noscript>
 
 <script>
 /* ============================================================
@@ -131,30 +217,73 @@ const OFF  = "https://world.openfoodfacts.org/api/v0/product/";
 const FDA  = "https://api.fda.gov/food/enforcement.json";
 const FSIS = "https://www.fsis.usda.gov/fsis/api/recall/v/1";
 const FDC  = "/api/fdc";                   // serverless proxy — holds the FoodData Central key server-side (api/fdc.js)
+const QR_LIB = "https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js";
 
 const CACHE_KEY = "rc_index_v3";
+const HIST_KEY = "rc_history";
 const CACHE_TTL = 12 * 60 * 60 * 1000;
 const WINDOW_DAYS = 400;
+const MAX_ROWS = 4000;                     // hard cap so a bad feed can't blow out localStorage
+const TIMEOUT = 15000;
 
 let scanner = null;
-let index = null;
-let history = JSON.parse(localStorage.getItem("rc_history") || "[]");
+let scannerLib = null;
+let recallIndex = null;                    // was `index` — that name shadowed too easily
+let installPrompt = null;
+let view = "home";                         // home | scan | manual | name | loading | result
+let token = 0;                             // bumped on every navigation; stale async work checks it
+let pushed = false;                        // whether we've pushed a history entry for a sub-screen
 const app = document.getElementById("app");
 
-const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+/* ---------- storage: never let corrupt or full storage kill the app ---------- */
+const store = {
+  get(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw == null) return fallback;
+      const val = JSON.parse(raw);
+      return val == null ? fallback : val;
+    } catch (e) { return fallback; }
+  },
+  set(key, val) {
+    try { localStorage.setItem(key, JSON.stringify(val)); return true; }
+    catch (e) { try { localStorage.removeItem(key); } catch (e2) {} return false; }
+  }
+};
+
+let recent = store.get(HIST_KEY, []);
+if (!Array.isArray(recent)) recent = [];
+
+const esc = s => String(s == null ? "" : s)
+  .replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+/* Inert parse — DOMParser never loads resources or runs handlers, unlike
+   assigning innerHTML on a detached node. */
+const HTML_PARSER = new DOMParser();
 function stripHtml(s) {
   if (!s) return "";
-  const d = document.createElement("div");
-  d.innerHTML = String(s);
-  return (d.textContent || "").replace(/\s+/g, " ").trim();
+  try {
+    const doc = HTML_PARSER.parseFromString(String(s), "text/html");
+    return (doc.body.textContent || "").replace(/\s+/g, " ").trim();
+  } catch (e) {
+    return String(s).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  }
+}
+
+const safeImg = u => /^https:\/\//i.test(String(u || "")) ? String(u) : null;
+
+async function fetchWithTimeout(url, ms) {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), ms || TIMEOUT);
+  try { return await fetch(url, { signal: ac.signal }); }
+  finally { clearTimeout(timer); }
 }
 
 /* ---------- tokenising & matching (unchanged logic from v2) ---------- */
 const STOP = new Set(["the","and","with","for","from","organic","natural","original","fresh","brand","inc","llc","ltd","co","corp","company","foods","food","products","product","of","in","a","an","new","all","size","oz","lb","ct","pack","count","free","style"]);
-const tokens = (s, max) => String(s || "").toLowerCase()
+const tokens = (s, max) => [...new Set(String(s || "").toLowerCase()
   .replace(/[^a-z0-9\s]/g, " ").split(/\s+/)
-  .filter(w => w.length > 2 && !STOP.has(w) && !/^\d+$/.test(w))
-  .filter((w, i, a) => a.indexOf(w) === i).slice(0, max || 12);
+  .filter(w => w.length > 2 && !STOP.has(w) && !/^\d+$/.test(w)))].slice(0, max || 12);
 
 const MEAT = /\b(beef|pork|chicken|turkey|ham|bacon|sausage|salami|pepperoni|jerky|meat|poultry|deli|hot ?dog|frank|bratwurst|chorizo|prosciutto|lamb|veal|duck|egg)\b/i;
 function isUsdaish(p) { return MEAT.test(`${p.name} ${p.brand} ${p.categories}`); }
@@ -165,11 +294,11 @@ async function fetchFda() {
   const to = new Date().toISOString().slice(0, 10).replace(/-/g, "");
   const out = [];
   for (let skip = 0; skip < 2000; skip += 1000) {
-    const r = await fetch(`${FDA}?search=report_date:[${from}+TO+${to}]&limit=1000&skip=${skip}`);
-    if (r.status === 404) break;
+    const r = await fetchWithTimeout(`${FDA}?search=report_date:[${from}+TO+${to}]&limit=1000&skip=${skip}`);
+    if (r.status === 404) break;                       // openFDA's "no results" response
     if (!r.ok) throw new Error("fda " + r.status);
     const j = await r.json();
-    const res = j.results || [];
+    const res = Array.isArray(j.results) ? j.results : [];
     res.forEach(x => out.push({
       src: "FDA", desc: (x.product_description || "").slice(0, 400), firm: x.recalling_firm || "",
       reason: (x.reason_for_recall || "").slice(0, 300), date: x.recall_initiation_date || x.report_date || "",
@@ -183,11 +312,11 @@ async function fetchFda() {
 
 async function fetchFsis() {
   const url = PROXY ? `${PROXY}?src=fsis` : `${FSIS}?field_archive_recall=0`;
-  const r = await fetch(url);
+  const r = await fetchWithTimeout(url);
   if (!r.ok) throw new Error("fsis " + r.status);
   const j = await r.json();
-  const rows = Array.isArray(j) ? j : (j.results || []);
-  return rows.filter(x => (x.langcode || "English") === "English").map(x => ({
+  const rows = Array.isArray(j) ? j : (Array.isArray(j.results) ? j.results : []);
+  return rows.filter(x => x && (x.langcode || "English") === "English").map(x => ({
     src: "USDA", desc: (stripHtml(x.field_product_items) || stripHtml(x.field_title)).slice(0, 400),
     firm: x.field_establishment || "", reason: x.field_recall_reason || "",
     date: (x.field_recall_date || "").replace(/-/g, ""), cls: x.field_recall_classification || x.field_risk_level || "",
@@ -197,25 +326,40 @@ async function fetchFsis() {
   }));
 }
 
+/* Lowercased haystacks are computed once per index rather than once per
+   row per lookup, and are stripped before the index is written to storage. */
+function prepareRows(rows) {
+  (rows || []).forEach(r => {
+    r._f = String(r.firm || "").toLowerCase();
+    r._p = `${r.desc || ""} ${r.title || ""}`.toLowerCase();
+  });
+  return rows || [];
+}
+
 async function buildIndex(force) {
   if (!force) {
-    try {
-      const c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
-      if (c && Date.now() - c.at < CACHE_TTL) { index = c; return c; }
-    } catch (e) {}
+    const c = store.get(CACHE_KEY, null);
+    if (c && typeof c.at === "number" && Array.isArray(c.rows) && Date.now() - c.at < CACHE_TTL) {
+      prepareRows(c.rows);
+      recallIndex = c;
+      return c;
+    }
   }
   const out = { at: Date.now(), rows: [], fda: false, usda: false };
   const [a, b] = await Promise.allSettled([fetchFda(), fetchFsis()]);
   if (a.status === "fulfilled") { out.rows.push(...a.value); out.fda = true; }
   if (b.status === "fulfilled") { out.rows.push(...b.value); out.usda = true; }
-  index = out;
-  try { localStorage.setItem(CACHE_KEY, JSON.stringify(out)); } catch (e) {}
+  if (out.rows.length > MAX_ROWS) out.rows = out.rows.slice(0, MAX_ROWS);
+  // Persist before adding the derived fields, so they don't double the payload.
+  if (out.fda || out.usda) store.set(CACHE_KEY, out);
+  prepareRows(out.rows);
+  recallIndex = out;
   return out;
 }
 
 function score(rec, brandT, nameT) {
-  const firmHay = rec.firm.toLowerCase();
-  const prodHay = `${rec.desc} ${rec.title || ""}`.toLowerCase();
+  const firmHay = rec._f || "";
+  const prodHay = rec._p || "";
   const allHay = firmHay + " " + prodHay;
   const brandHit = brandT.length ? brandT.some(w => allHay.includes(w)) : false;
   const firmHit  = brandT.length ? brandT.some(w => firmHay.includes(w)) : false;
@@ -230,7 +374,7 @@ function match(product) {
   const brandT = tokens(product.brand, 3);
   const nameT = tokens(product.name, 6);
   const hits = { strong: [], possible: [], brand: [] };
-  (index.rows || []).forEach(r => {
+  ((recallIndex && recallIndex.rows) || []).forEach(r => {
     const s = score(r, brandT, nameT);
     if (s) hits[s.tier].push({ rec: r, n: s.n });
   });
@@ -241,27 +385,27 @@ function match(product) {
 
 /* ---------- dual ingredient sourcing: Open Food Facts, then FoodData Central ---------- */
 async function fetchOff(code) {
-  const r = await fetch(`${OFF}${encodeURIComponent(code)}.json`);
+  const r = await fetchWithTimeout(`${OFF}${encodeURIComponent(code)}.json`);
+  if (!r.ok) return null;
   const d = await r.json();
-  if (d.status !== 1 || !d.product) return null;
+  if (!d || d.status !== 1 || !d.product) return null;
   const p = d.product;
   return {
     name: p.product_name || p.generic_name || "",
     brand: p.brands || "",
     categories: p.categories || "",
-    image: p.image_front_small_url || null,
+    image: safeImg(p.image_front_small_url),
     ingredientsText: p.ingredients_text || "",
-    additiveTags: p.additives_tags || [],
+    additiveTags: Array.isArray(p.additives_tags) ? p.additives_tags : [],
     ingredientSource: "Open Food Facts"
   };
 }
 
 async function fetchFdc(code) {
-  const url = `${FDC}?code=${encodeURIComponent(code)}`;
-  const r = await fetch(url);
+  const r = await fetchWithTimeout(`${FDC}?code=${encodeURIComponent(code)}`);
   if (!r.ok) return null;
   const d = await r.json();
-  const f = (d.foods || [])[0];
+  const f = (d && Array.isArray(d.foods) ? d.foods : [])[0];
   if (!f) return null;
   return {
     name: f.description || "",
@@ -283,7 +427,8 @@ function mergeProduct(off, fdc, code) {
   const ingredientsText = (off && off.ingredientsText) || (fdc && fdc.ingredientsText) || "";
   const ingredientSource = (off && off.ingredientsText) ? off.ingredientSource : (fdc && fdc.ingredientsText) ? fdc.ingredientSource : null;
   return {
-    name: base.name, brand: base.brand, categories: base.categories,
+    name: base.name || (fdc && fdc.name) || (off && off.name) || "",
+    brand: base.brand || "", categories: base.categories || "",
     image: (off && off.image) || null, code,
     ingredientsText,
     additiveTags: (off && off.additiveTags) || [],
@@ -294,20 +439,32 @@ function mergeProduct(off, fdc, code) {
 
 /* ---------- flow ---------- */
 async function lookup(code) {
-  render(loadingView(code, "Loading recall data"));
-  try { await buildIndex(false); } catch (e) { index = index || { rows: [], fda: false, usda: false }; }
+  code = String(code || "").replace(/\D/g, "");
+  if (!code) return goHome();
+  await stopScanner();
+  const t = ++token;
+  view = "loading";
+  enterSub();
 
-  render(loadingView(code, "Identifying product"));
+  render(loadingView(code, 0), { busy: true });
+  try { await buildIndex(false); } catch (e) { recallIndex = recallIndex || { rows: [], fda: false, usda: false }; }
+  if (t !== token) return;
+
+  render(loadingView(code, 1), { busy: true });
   const [offR, fdcR] = await Promise.allSettled([fetchOff(code), fetchFdc(code)]);
+  if (t !== token) return;
   const off = offR.status === "fulfilled" ? offR.value : null;
   const fdc = fdcR.status === "fulfilled" ? fdcR.value : null;
   const prod = mergeProduct(off, fdc, code);
 
-  if (!index.fda && !index.usda) return show({ state: "offline", code, product: prod });
+  if (!recallIndex.fda && !recallIndex.usda) return show({ state: "offline", code, product: prod });
   if (!prod || !prod.name) return show({ state: "nodata", code });
 
+  render(loadingView(code, 2), { busy: true });
   const hits = match(prod);
-  const divergence = findDivergence(prod.additiveTags, prod.ingredientsText);
+  const divergence = typeof findDivergence === "function"
+    ? findDivergence(prod.additiveTags, prod.ingredientsText) : [];
+  if (t !== token) return;
   const payload = { product: prod, code, hits, divergence };
 
   if (hits.strong.length)   return show({ ...payload, state: "recalled", tier: "strong" });
@@ -315,33 +472,49 @@ async function lookup(code) {
   return show({ ...payload, state: "clear" });
 }
 
+const VERDICT_WORD = { recalled: "Recalled", possible: "Possible match", clear: "No recall found", nodata: "No data", offline: "Couldn't check" };
+
 function show(r) {
-  if (["recalled","clear","nodata"].includes(r.state)) {
-    const nm = r.product ? (r.product.name || r.code) : r.code;
+  view = "result";
+  if (["recalled", "clear", "nodata"].includes(r.state)) {
+    const nm = (r.product && r.product.name) || r.code;
     const st = r.state === "recalled" ? (r.tier === "strong" ? "recalled" : "possible") : r.state;
-    history = [{ name: nm, state: st, at: Date.now() }, ...history.filter(h => h.name !== nm)].slice(0, 8);
-    localStorage.setItem("rc_history", JSON.stringify(history));
+    const codeVal = r.nameSearch ? null : r.code;
+    recent = [{ name: nm, state: st, at: Date.now(), code: codeVal }]
+      .concat(recent.filter(h => h && h.name !== nm))
+      .slice(0, 8);
+    store.set(HIST_KEY, recent);
   }
   render(resultView(r));
+  announce(`${VERDICT_WORD[r.state] || "Result"} for ${(r.product && r.product.name) || r.code}`);
 }
 
 const fmtDate = s => { s = String(s || ""); return s.length === 8 ? `${s.slice(4,6)}/${s.slice(6,8)}/${s.slice(0,4)}` : (s || "Not listed"); };
 
+function ago(ms) {
+  const m = Math.round(ms / 6e4);
+  if (m < 1) return "just now";
+  if (m < 60) return m + "m ago";
+  const h = Math.round(m / 60);
+  return h === 1 ? "1h ago" : h + "h ago";
+}
+
 /* ---------- icon helpers (inline SVG, no external assets) ---------- */
 const ICONS = {
-  scan: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>`,
-  leaf: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 4 13c0-4 3-9 8-11 5 2 8 7 8 11a7 7 0 0 1-7 7c-1 0-2-.2-3-.6"/><path d="M12 12v8"/></svg>`,
-  check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
-  x: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
-  q: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
-  arrow: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`
+  scan: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>`,
+  check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>`,
+  x: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  q: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+  arrow: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
+  refresh: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>`,
+  ext: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`
 };
 
 function verdictRing(kind) {
   // kind: ok | bad | warn
   const color = kind === "ok" ? "var(--green)" : kind === "bad" ? "var(--red)" : "var(--amber)";
   const icon = kind === "ok" ? ICONS.check : kind === "bad" ? ICONS.x : ICONS.q;
-  return `<div class="ring-wrap"><div class="ring">
+  return `<div class="ring-wrap" aria-hidden="true"><div class="ring">
     <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="${color}" stroke-width="5" stroke-linecap="round" opacity="0.9"/></svg>
     <div class="ring-icon" style="color:${color}">${icon}</div>
   </div></div>`;
@@ -351,7 +524,7 @@ function brandMark() {
   // Lettuce leaf with barcode-style veins and a verdict checkmark —
   // the leaf shape carries the pun, the veins carry the scan cue,
   // the checkmark carries the app's actual job.
-  return `<svg class="brand-mark" viewBox="0 0 200 200" fill="none">
+  return `<svg class="brand-mark" viewBox="0 0 200 200" fill="none" aria-hidden="true" focusable="false">
     <path d="M100 20 C 108 26, 112 34, 110 42 C 120 34, 130 34, 136 42 C 140 52, 136 60, 128 64 C 140 62, 150 68, 152 78 C 154 90, 148 98, 138 100 C 150 102, 158 112, 158 124 C 158 136, 150 144, 140 144 C 148 152, 148 164, 140 172 C 132 180, 120 180, 114 172 C 112 182, 104 190, 100 190 C 96 190, 88 182, 86 172 C 80 180, 68 180, 60 172 C 52 164, 52 152, 60 144 C 50 144, 42 136, 42 124 C 42 112, 50 102, 62 100 C 52 98, 46 90, 48 78 C 50 68, 60 62, 72 64 C 64 60, 60 52, 64 42 C 70 34, 80 34, 90 42 C 88 34, 92 26, 100 20 Z" fill="#4ade80"/>
     <line x1="100" y1="46" x2="100" y2="168" stroke="#0d3320" stroke-width="4" stroke-linecap="round" opacity="0.35"/>
     <g stroke="#0b1f16" stroke-linecap="round" opacity="0.5">
@@ -366,116 +539,165 @@ function brandMark() {
   </svg>`;
 }
 
+function iconSpan(svg, size) { return `<span style="width:${size || 16}px;height:${size || 16}px;display:inline-flex;flex-shrink:0">${svg}</span>`; }
+function backBar() { return `<button class="back" data-act="home">${iconSpan(ICONS.arrow)} Back</button>`; }
+
 /* ---------- views ---------- */
 function sourceTags(extra) {
-  if (!index) return "";
-  const age = index.at ? Math.round((Date.now() - index.at) / 6e4) : 0;
+  if (!recallIndex) {
+    return `<div class="src"><span class="tag-skel"></span><span class="tag-skel"></span><span class="tag-skel"></span></div>`;
+  }
+  const age = recallIndex.at ? ago(Date.now() - recallIndex.at) : "just now";
+  const both = recallIndex.fda && recallIndex.usda;
   const tags = [
-    `<span class="tag ${index.fda ? "up" : "down"}">FDA ${index.fda ? "loaded" : "unavailable"}</span>`,
-    `<span class="tag ${index.usda ? "up" : "down"}">USDA ${index.usda ? "loaded" : "unavailable"}</span>`
+    `<span class="tag ${recallIndex.fda ? "up" : "down"}">FDA ${recallIndex.fda ? "loaded" : "unavailable"}</span>`,
+    `<span class="tag ${recallIndex.usda ? "up" : "down"}">USDA ${recallIndex.usda ? "loaded" : "unavailable"}</span>`
   ];
   if (extra) tags.push(extra);
-  else tags.push(`<span class="tag">${index.rows.length} recalls &middot; ${age < 1 ? "just now" : age + "m ago"}</span>`);
-  return `<div class="src">${tags.join("")}</div>`;
+  else tags.push(`<span class="tag">${recallIndex.rows.length} ${recallIndex.rows.length === 1 ? "recall" : "recalls"} &middot; ${age}</span>`);
+  tags.push(`<button class="linkish" data-act="refresh" title="Refresh recall data"
+    aria-label="Refresh recall data">${iconSpan(ICONS.refresh, 14)}</button>`);
+  const warn = both ? "" : `<p class="mini" style="text-align:center">${
+    recallIndex.fda || recallIndex.usda
+      ? "One source didn't respond, so results are partial."
+      : "Neither recall source responded. Check your connection and refresh."
+  }</p>`;
+  return `<div class="src">${tags.join("")}</div>${warn}`;
 }
 
 function homeView() {
-  const h = history.length ? `
-    <div style="margin-top:32px">
-      <div class="label">Recent scans</div>
-      ${history.map(x => `<div class="hist">
-        <div style="min-width:0;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name)}</div>
-        <span class="pill ${x.state === "recalled" ? "p-bad" : x.state === "clear" ? "p-ok" : "p-warn"}">${
-          x.state === "recalled" ? "Recalled" : x.state === "possible" ? "Possible" : x.state === "clear" ? "Clear" : "No data"
-        }</span>
-      </div>`).join("")}
-    </div>` : "";
+  const pill = x => x.state === "recalled" ? "p-bad" : x.state === "clear" ? "p-ok" : "p-warn";
+  const word = x => x.state === "recalled" ? "Recalled" : x.state === "possible" ? "Possible" : x.state === "clear" ? "Clear" : "No data";
+  const h = recent.length ? `
+    <section style="margin-top:var(--s7)" aria-labelledby="recent-h">
+      <h2 id="recent-h" class="label" style="font-family:Inter,sans-serif">Recent scans</h2>
+      ${recent.map(x => x.code
+        ? `<button class="hist" data-act="recheck" data-arg="${esc(x.code)}">
+             <span class="hist-name">${esc(x.name)}</span>
+             <span class="pill ${pill(x)}">${word(x)}</span>
+           </button>`
+        : `<div class="hist">
+             <span class="hist-name">${esc(x.name)}</span>
+             <span class="pill ${pill(x)}">${word(x)}</span>
+           </div>`).join("")}
+      ${recent.some(x => x.code) ? `<p class="mini">Tap a scan to check it again.</p>` : ""}
+    </section>` : "";
   return `
-    <div class="topbar"><div class="brand">${brandMark()}<span class="brand-name">Lettuce Know</span></div></div>
-    <div style="padding-top:8px">
-      <h1>We'll tell you.</h1>
+    <div class="topbar"><div class="brand">${brandMark()}<span class="brand-name">Lettuce Know</span></div>
+      ${installPrompt ? `<button class="linkish" data-act="install">Install</button>` : ""}
+    </div>
+    <div style="padding-top:var(--s2)">
+      <h1 tabindex="-1">We'll tell you.</h1>
       <p class="sub">Scan any barcode for active FDA and USDA recalls, plus where US and EU food rules disagree.</p>
     </div>
-    <div class="stack" style="margin-top:28px">
-      <button class="primary" onclick="goScan()">
-        <span style="display:flex;align-items:center;justify-content:center;gap:9px">
-          <span style="width:20px;height:20px;display:inline-flex">${ICONS.scan}</span> Scan a barcode
-        </span>
+    <div class="stack" style="margin-top:var(--s7)">
+      <button class="primary" data-act="scan">
+        <span class="btn-inner">${iconSpan(ICONS.scan, 20)} Scan a barcode</span>
       </button>
-      <button class="ghost" onclick="goManual()">Enter the number instead</button>
+      <button class="ghost" data-act="manual">Enter the number instead</button>
     </div>
-    ${index ? sourceTags() : `<p class="mini" style="text-align:center">Loading recall sources&hellip;</p>`}
+    <div id="srcline">${sourceTags()}</div>
     ${h}
     <p class="foot">FDA covers most packaged food. USDA FSIS covers meat, poultry, and egg. Ingredient data comes from Open Food Facts and USDA FoodData Central — availability varies by product.</p>`;
 }
 
 function scanView() {
   return `
-    <button class="back" onclick="goHome()">${iconSpan(ICONS.arrow)} Back</button>
-    <div id="reader"></div>
-    <p class="sub" style="text-align:center;margin-top:18px">Hold the barcode inside the frame.</p>
-    <div id="scanerr"></div>
-    <div class="stack" style="margin-top:20px">
-      <button class="ghost" onclick="goManual()">Enter the number instead</button>
+    ${backBar()}
+    <h1 class="sr-only" tabindex="-1">Scan a barcode</h1>
+    <div id="reader"><div class="cam-wait"><div class="spin"></div><span>Starting camera&hellip;</span></div></div>
+    <p class="sub" style="text-align:center;margin-top:var(--s5)">Hold the barcode inside the frame.</p>
+    <div id="scanerr" role="alert"></div>
+    <div class="stack" style="margin-top:var(--s5)">
+      <button class="ghost" data-act="manual">Enter the number instead</button>
     </div>`;
 }
-
-function iconSpan(svg, size) { return `<span style="width:${size||16}px;height:${size||16}px;display:inline-flex;flex-shrink:0">${svg}</span>`; }
 
 function manualView() {
   return `
-    <button class="back" onclick="goHome()">${iconSpan(ICONS.arrow)} Back</button>
-    <h2>Enter barcode</h2>
-    <p class="sub">The number printed under the barcode, usually 12 or 13 digits.</p>
-    <div class="stack" style="margin-top:24px">
-      <input id="code" type="text" inputmode="numeric" autocomplete="off" placeholder="0 00000 00000 0">
-      <div id="manualerr"></div>
-      <button class="primary" onclick="submitManual()">Check it</button>
-    </div>`;
+    ${backBar()}
+    <h1 tabindex="-1">Enter barcode</h1>
+    <p class="sub" id="code-hint">The number printed under the barcode — usually 12 or 13 digits.</p>
+    <form class="stack" style="margin-top:var(--s6)" data-act="submit-manual" novalidate>
+      <div>
+        <label class="sr-only" for="code">Barcode number</label>
+        <input id="code" name="code" type="text" inputmode="numeric" autocomplete="off"
+               enterkeyhint="go" maxlength="20" aria-describedby="code-hint manualerr"
+               placeholder="0 00000 00000 0">
+      </div>
+      <div id="manualerr" role="alert"></div>
+      <button class="primary" type="submit">Check this barcode</button>
+    </form>`;
 }
 
-function loadingView(code, msg) {
-  return `<div style="padding:100px 0 40px;text-align:center">
+function nameView() {
+  return `
+    ${backBar()}
+    <h1 tabindex="-1">Search recalls by name</h1>
+    <p class="sub" id="nm-hint">Type the brand and product as printed on the package.</p>
+    <form class="stack" style="margin-top:var(--s6)" data-act="submit-name" novalidate>
+      <div>
+        <label class="sr-only" for="nm">Brand and product name</label>
+        <input id="nm" name="nm" type="text" autocomplete="off" enterkeyhint="search"
+               maxlength="80" aria-describedby="nm-hint nmerr" placeholder="e.g. Fresh Express chopped kit">
+      </div>
+      <div id="nmerr" role="alert"></div>
+      <button class="primary" type="submit">Search recalls</button>
+    </form>`;
+}
+
+const STEP_LABELS = ["Loading recall data", "Identifying product", "Checking for matches"];
+function loadingView(code, stepIdx) {
+  const items = STEP_LABELS.map((label, i) => {
+    const cls = i < stepIdx ? "done" : i === stepIdx ? "active" : "";
+    return `<li class="${cls}">
+      <span class="step-dot">${i < stepIdx ? iconSpan(ICONS.check, 10) : ""}</span>${esc(label)}
+    </li>`;
+  }).join("");
+  return `<div style="padding:72px 0 40px;text-align:center">
+    <h1 class="sr-only" tabindex="-1">Checking ${esc(code)}</h1>
     <div class="spin"></div>
-    <p class="sub pulse" style="margin-top:22px">${esc(msg)}</p>
-    <p class="mini">${esc(code)}</p>
+    <p class="mini" style="margin-top:var(--s5)">${esc(code)}</p>
+    <ul class="steps">${items}</ul>
   </div>`;
 }
 
 function recallCard(h) {
   const c = h.rec;
-  return `<div class="card" style="margin-top:14px">
+  return `<div class="card" style="margin-top:var(--s4)">
     <div class="label">${esc(c.src)} recall ${esc(c.num || "")}</div>
     <div style="font-size:15px;line-height:1.5;font-weight:600">${esc(c.reason || "No reason listed")}</div>
-    <div class="row"><span>Firm</span><span>${esc(c.firm || "Not listed")}</span></div>
-    <div class="row"><span>Date</span><span>${fmtDate(c.date)}</span></div>
-    <div class="row"><span>Class</span><span>${esc(c.cls || "Not listed")}</span></div>
-    <div class="row"><span>Status</span><span>${esc(c.status || "Not listed")}</span></div>
-    ${c.states ? `<div class="row"><span>Where</span><span>${esc(c.states)}</span></div>` : ""}
-    ${c.desc ? `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft)">
+    <dl>
+      <div class="row"><dt>Firm</dt><dd>${esc(c.firm || "Not listed")}</dd></div>
+      <div class="row"><dt>Date</dt><dd>${fmtDate(c.date)}</dd></div>
+      <div class="row"><dt>Class</dt><dd>${esc(c.cls || "Not listed")}</dd></div>
+      <div class="row"><dt>Status</dt><dd>${esc(c.status || "Not listed")}</dd></div>
+      ${c.states ? `<div class="row"><dt>Where</dt><dd>${esc(c.states)}</dd></div>` : ""}
+    </dl>
+    ${c.desc ? `<div style="margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--line-soft)">
       <div class="label">Products covered</div>
       <div style="font-size:14px;line-height:1.6;color:var(--dim)">${esc(c.desc)}</div>
     </div>` : ""}
-    ${c.contact ? `<div class="mini">Company contact: ${esc(c.contact)}</div>` : ""}
+    ${c.contact ? `<p class="mini">Company contact: ${esc(c.contact)}</p>` : ""}
   </div>`;
 }
 
 function divergenceSection(divergence, ingredientSource) {
   if (!ingredientSource) {
-    return `<div class="card" style="margin-top:16px">
+    return `<div class="card" style="margin-top:var(--s4)">
       <div class="label">EU / US ingredient check</div>
       <p class="mini" style="margin-top:0">No ingredient list available for this product from either source, so this can't be checked. Not a signal either way.</p>
     </div>`;
   }
   if (!divergence.length) {
-    return `<div class="card" style="margin-top:16px">
+    return `<div class="card" style="margin-top:var(--s4)">
       <div class="label">EU / US ingredient check</div>
       <p class="mini" style="margin-top:0">Nothing on this ingredient list appears on our list of substances treated differently by the FDA and EU. Checked against ingredient data from ${esc(ingredientSource)}.</p>
     </div>`;
   }
-  return `<div style="margin-top:16px">
-    <div class="label" style="margin-bottom:10px">EU / US regulatory notes</div>
-    <div class="badge-scroll">${divergence.map(d => `<span class="chip">${esc(d.name)}</span>`).join("")}</div>
+  return `<section style="margin-top:var(--s4)" aria-labelledby="eu-us-h">
+    <h2 id="eu-us-h" class="label" style="font-family:Inter,sans-serif;margin-bottom:var(--s3)">EU / US regulatory notes</h2>
+    ${divergence.length > 1 ? `<div class="badge-scroll" aria-hidden="true">${divergence.map(d => `<span class="chip">${esc(d.name)}</span>`).join("")}</div>` : ""}
     ${divergence.map(d => `
       <div class="divergence-card">
         <h3>${esc(d.name)}${d.eNumber ? ` <span style="color:var(--dim);font-weight:500">(${esc(d.eNumber)})</span>` : ""}</h3>
@@ -484,27 +706,36 @@ function divergenceSection(divergence, ingredientSource) {
           <div class="eu-us-col"><div class="k">European Union</div><div class="v">${esc(d.euStatus)}</div></div>
         </div>
         <p class="mini">${esc(d.note)}</p>
+        ${d.source ? `<p class="mini"><a class="src-link" href="${esc(d.source)}" target="_blank" rel="noopener noreferrer">Source ${iconSpan(ICONS.ext, 11)}</a></p>` : ""}
       </div>`).join("")}
-    <p class="mini" style="text-align:center;margin-top:14px">Regulatory facts, not a safety verdict — the EU and FDA weigh the same evidence differently. Ingredient data from ${esc(ingredientSource)}.</p>
-  </div>`;
+    <p class="mini" style="text-align:center">Regulatory facts, not a safety verdict — the EU and FDA weigh the same evidence differently. Ingredient data from ${esc(ingredientSource)}.</p>
+  </section>`;
 }
 
 function resultView(r) {
   const p = r.product;
+  const img = p && p.image;
   const head = p ? `
-    <div style="display:flex;gap:14px;align-items:center;margin-bottom:8px">
-      ${p.image ? `<img src="${esc(p.image)}" alt="" style="width:52px;height:52px;object-fit:contain;border-radius:12px;background:#fff;flex-shrink:0">` : ""}
+    <div style="display:flex;gap:var(--s4);align-items:center;margin-bottom:var(--s2)">
+      ${img ? `<img src="${esc(img)}" alt="" loading="lazy" decoding="async" width="52" height="52"
+        style="width:52px;height:52px;object-fit:contain;border-radius:12px;background:#fff;flex-shrink:0"
+        onerror="this.remove()">` : ""}
       <div style="min-width:0">
-        <h2>${esc(p.name)}</h2>
+        <h1 tabindex="-1" style="font-size:22px;line-height:1.25">${esc(p.name || r.code)}</h1>
         ${p.brand ? `<p class="sub" style="margin-top:2px">${esc(p.brand)}</p>` : ""}
       </div>
-    </div>` : `<h2 style="margin-bottom:8px">Barcode ${esc(r.code)}</h2>`;
+    </div>` : `<h1 tabindex="-1" style="font-size:22px;margin-bottom:var(--s2)">Barcode ${esc(r.code)}</h1>`;
 
+  // Only one primary action per screen — the bottom CTA steps down to ghost
+  // whenever the body already owns the primary action.
   let body = "";
+  let bottomPrimary = true;
 
   if (r.state === "recalled") {
     const list = r.tier === "strong" ? r.hits.strong : r.hits.possible;
     const strong = r.tier === "strong";
+    const top = list[0] && list[0].rec;
+    const q = top ? `${String(top.firm || "").trim()} ${String(top.num || "").trim()}`.trim() : r.code;
     body = `
       ${verdictRing(strong ? "bad" : "warn")}
       <div class="verdict ${strong ? "v-bad" : "v-warn"}">
@@ -514,7 +745,7 @@ function resultView(r) {
           : "A recall partly matches this product. Compare the covered products below to your package — treat this as a prompt to check, not a confirmation."}</div>
       </div>
       ${list.slice(0, 3).map(recallCard).join("")}
-      <div class="card" style="margin-top:14px">
+      <div class="card" style="margin-top:var(--s4)">
         <div class="label">What to do</div>
         <ul class="list">
           <li>Compare the lot code and best-by date on your package to the covered products above.</li>
@@ -522,16 +753,18 @@ function resultView(r) {
           <li>Report a reaction to the FDA at safetyreporting.hhs.gov, or for meat and poultry call USDA at 888-674-6854.</li>
         </ul>
       </div>
-      <div class="stack" style="margin-top:14px">
-        <button class="ghost" onclick="openSearch('${esc(String(list[0].rec.firm || "").replace(/'/g, ""))} ${esc(list[0].rec.num || "")}')">Look up this recall notice</button>
+      <div class="stack" style="margin-top:var(--s4)">
+        <button class="ghost" data-act="search" data-arg="${esc(q)}">
+          <span class="btn-inner">Look up this recall notice ${iconSpan(ICONS.ext, 15)}</span>
+        </button>
       </div>
-      ${divergenceSection(r.divergence, p.ingredientSource)}
+      ${r.nameSearch ? "" : divergenceSection(r.divergence, p.ingredientSource)}
       ${r.hits.brand.length && !strong ? `<p class="mini" style="text-align:center">${r.hits.brand.length} other recall${r.hits.brand.length > 1 ? "s" : ""} from this brand in the last year.</p>` : ""}`;
   }
 
   if (r.state === "clear") {
     const usdaish = isUsdaish(p);
-    const gap = !index.usda && usdaish;
+    const gap = !recallIndex.usda && usdaish;
     body = `
       ${verdictRing(gap ? "warn" : "ok")}
       <div class="verdict ${gap ? "v-warn" : "v-ok"}">
@@ -541,13 +774,13 @@ function resultView(r) {
           : "Nothing in the FDA or USDA recall data matches this product."}</div>
       </div>
       ${sourceTags()}
-      ${divergenceSection(r.divergence, p.ingredientSource)}
-      ${r.hits.brand.length ? `<div class="card" style="margin-top:14px">
+      ${r.nameSearch ? "" : divergenceSection(r.divergence, p.ingredientSource)}
+      ${r.hits.brand.length ? `<div class="card" style="margin-top:var(--s4)">
         <div class="label">Same brand, different products</div>
-        <div class="mini" style="margin-top:0">${r.hits.brand.length} recall${r.hits.brand.length > 1 ? "s" : ""} from this brand in the last year. Not your product, but worth knowing.</div>
+        <p class="mini" style="margin-top:0">${r.hits.brand.length} recall${r.hits.brand.length > 1 ? "s" : ""} from this brand in the last year. Not your product, but worth knowing.</p>
         ${r.hits.brand.slice(0, 2).map(recallCard).join("")}
       </div>` : ""}
-      <div class="card" style="margin-top:14px">
+      <div class="card" style="margin-top:var(--s4)">
         <div class="label">Worth knowing</div>
         <ul class="list">
           <li>FDA publishes weekly, so a very recent recall may not be listed yet.</li>
@@ -563,10 +796,13 @@ function resultView(r) {
         <div class="v-title">No data on this product</div>
         <div class="v-body">This barcode isn't in either product database, so nothing could be checked. That's not a safety signal — we just can't tell.</div>
       </div>
-      <div class="stack" style="margin-top:14px">
-        <button class="ghost" onclick="openSearch('${esc(r.code)}')">Search the web for this barcode</button>
-        <button class="ghost" onclick="goManualName()">Search recalls by name instead</button>
+      <div class="stack" style="margin-top:var(--s4)">
+        <button class="primary" data-act="manual-name">Search recalls by name instead</button>
+        <button class="ghost" data-act="search" data-arg="${esc(r.code)}">
+          <span class="btn-inner">Search the web for this barcode ${iconSpan(ICONS.ext, 15)}</span>
+        </button>
       </div>`;
+    bottomPrimary = false;
   }
 
   if (r.state === "offline") {
@@ -576,103 +812,336 @@ function resultView(r) {
         <div class="v-title">Couldn't load recall data</div>
         <div class="v-body">Neither FDA nor USDA responded, so nothing was checked. Usually a weak connection inside a store.</div>
       </div>
-      <div class="stack" style="margin-top:14px">
-        <button class="primary" onclick="lookup('${esc(r.code)}')">Try again</button>
+      <div class="stack" style="margin-top:var(--s4)">
+        <button class="primary" data-act="recheck" data-arg="${esc(r.code)}">Try again</button>
       </div>`;
+    bottomPrimary = false;
   }
 
-  return `<button class="back" onclick="goHome()">${iconSpan(ICONS.arrow)} Back</button>${head}
-    <div style="margin-top:20px">${body}</div>
-    <div class="stack" style="margin-top:24px"><button class="primary" onclick="goScan()">Scan another</button></div>`;
+  return `${backBar()}${head}
+    <div style="margin-top:var(--s5)">${body}</div>
+    <div class="stack" style="margin-top:var(--s6)">
+      <button class="${bottomPrimary ? "primary" : "ghost"}" data-act="scan">
+        <span class="btn-inner">${iconSpan(ICONS.scan, 18)} Scan another</span>
+      </button>
+    </div>`;
 }
 
-function goManualName() {
-  render(`<button class="back" onclick="goHome()">${iconSpan(ICONS.arrow)} Back</button>
-    <h2>Search recalls by name</h2>
-    <p class="sub">Type the brand and product as printed on the package.</p>
-    <div class="stack" style="margin-top:24px">
-      <input id="nm" type="text" autocomplete="off" placeholder="e.g. Fresh Express chopped kit">
-      <div id="nmerr"></div>
-      <button class="primary" onclick="runNameSearch()">Search</button>
-    </div>`);
-  setTimeout(() => { const e = document.getElementById("nm"); if (e) e.focus(); }, 50);
-}
-
-async function runNameSearch() {
-  const v = (document.getElementById("nm").value || "").trim();
+async function runNameSearch(_arg, form) {
+  const input = document.getElementById("nm");
   const box = document.getElementById("nmerr");
-  if (v.length < 3) { box.innerHTML = `<div class="err">Type a bit more.</div>`; return; }
-  box.innerHTML = "";
-  render(loadingView(v, "Searching recalls"));
-  try { await buildIndex(false); } catch (e) {}
+  const v = ((input && input.value) || "").trim();
+  if (v.length < 3) {
+    if (box) box.innerHTML = `<div class="err">Type at least 3 characters — a brand or product name works best.</div>`;
+    if (input) { input.setAttribute("aria-invalid", "true"); input.focus(); }
+    return;
+  }
+  if (input) input.removeAttribute("aria-invalid");
+  if (box) box.innerHTML = "";
+  const btn = form && form.querySelector("button[type=submit]");
+  if (btn) btn.classList.add("is-loading");
+
+  const t = ++token;
+  view = "loading";
+  render(loadingView(v, 0), { busy: true });
+  try { await buildIndex(false); } catch (e) { recallIndex = recallIndex || { rows: [], fda: false, usda: false }; }
+  if (t !== token) return;
+
+  if (!recallIndex.fda && !recallIndex.usda) return show({ state: "offline", code: v, product: null, nameSearch: true });
+
+  render(loadingView(v, 2), { busy: true });
   const prod = { name: v, brand: v.split(/\s+/).slice(0, 2).join(" "), categories: "", image: null, code: v, ingredientsText: "", additiveTags: [], ingredientSource: null };
   const hits = match(prod);
-  const payload = { product: prod, code: v, hits, divergence: [] };
+  if (t !== token) return;
+  const payload = { product: prod, code: v, hits, divergence: [], nameSearch: true };
   if (hits.strong.length)   return show({ ...payload, state: "recalled", tier: "strong" });
   if (hits.possible.length) return show({ ...payload, state: "recalled", tier: "possible" });
   show({ ...payload, state: "clear" });
 }
 
-/* ---------- nav ---------- */
-function render(html) { app.innerHTML = html; window.scrollTo(0, 0); }
+/* ---------- render, focus & announcements ---------- */
+function render(html, opts) {
+  app.innerHTML = html;
+  app.setAttribute("aria-busy", opts && opts.busy ? "true" : "false");
+  window.scrollTo(0, 0);
+  // Move focus to the new screen's heading so keyboard and screen-reader
+  // users land in the right place instead of at the top of <body>.
+  const h = app.querySelector("h1");
+  if (h) { try { h.focus({ preventScroll: true }); } catch (e) { h.focus(); } }
+}
+
+function announce(msg) {
+  const el = document.getElementById("sr-status");
+  if (el) { el.textContent = ""; setTimeout(() => { el.textContent = msg; }, 60); }
+}
+
+/* ---------- toast ---------- */
+let toastTimer = null;
+function toast(msg, actionLabel, actionFn) {
+  const el = document.getElementById("toast");
+  if (!el) return;
+  clearTimeout(toastTimer);
+  el.hidden = false;
+  el.innerHTML = `<span class="t-msg">${esc(msg)}</span>`;
+  if (actionLabel) {
+    const b = document.createElement("button");
+    b.textContent = actionLabel;
+    b.addEventListener("click", () => { hideToast(); if (actionFn) actionFn(); });
+    el.appendChild(b);
+  }
+  requestAnimationFrame(() => el.classList.add("show"));
+  if (!actionLabel) toastTimer = setTimeout(hideToast, 3200);
+}
+function hideToast() {
+  const el = document.getElementById("toast");
+  if (!el) return;
+  el.classList.remove("show");
+  toastTimer = setTimeout(() => { el.hidden = true; }, 300);
+}
+
+/* ---------- nav & history ---------- */
+function enterSub() {
+  if (pushed) return;
+  try { window.history.pushState({ lk: 1 }, ""); pushed = true; } catch (e) {}
+}
 
 async function stopScanner() {
   if (!scanner) return;
-  try { await scanner.stop(); } catch (e) {}
-  try { scanner.clear(); } catch (e) {}
+  const s = scanner;
   scanner = null;
+  try { await s.stop(); } catch (e) {}
+  try { s.clear(); } catch (e) {}
 }
 
-async function goHome() { await stopScanner(); render(homeView()); }
+async function goHome() {
+  ++token;
+  await stopScanner();
+  // If we pushed an entry, unwind it so the browser's Back button and the
+  // in-app Back button agree about where "back" goes.
+  if (pushed) { pushed = false; try { window.history.back(); return; } catch (e) {} }
+  view = "home";
+  render(homeView());
+}
+
+function renderHomeNow() {
+  view = "home";
+  pushed = false;
+  render(homeView());
+}
+
+window.addEventListener("popstate", () => {
+  ++token;
+  pushed = false;
+  stopScanner();
+  if (view !== "home") renderHomeNow();
+});
+
 async function goManual() {
-  await stopScanner(); render(manualView());
-  setTimeout(() => { const e = document.getElementById("code"); if (e) e.focus(); }, 50);
+  ++token;
+  await stopScanner();
+  view = "manual";
+  enterSub();
+  render(manualView());
+  const e = document.getElementById("code");
+  if (e) e.focus();
 }
 
-function submitManual() {
-  const v = (document.getElementById("code").value || "").replace(/\D/g, "");
+function goManualName() {
+  ++token;
+  view = "name";
+  enterSub();
+  render(nameView());
+  const e = document.getElementById("nm");
+  if (e) e.focus();
+}
+
+function submitManual(_arg, form) {
+  const input = document.getElementById("code");
   const box = document.getElementById("manualerr");
-  if (v.length < 8) { box.innerHTML = `<div class="err">Enter at least 8 digits.</div>`; return; }
-  box.innerHTML = "";
+  const raw = ((input && input.value) || "").trim();
+  const v = raw.replace(/\D/g, "");
+  let msg = "";
+  if (!v) msg = "Enter the digits printed under the barcode.";
+  else if (v.length < 8) msg = `That's ${v.length} digit${v.length === 1 ? "" : "s"} — barcodes have at least 8.`;
+  else if (v.length > 14) msg = "That's longer than a standard barcode, which tops out at 14 digits.";
+  if (msg) {
+    if (box) box.innerHTML = `<div class="err">${esc(msg)}</div>`;
+    if (input) { input.setAttribute("aria-invalid", "true"); input.focus(); }
+    return;
+  }
+  if (input) input.removeAttribute("aria-invalid");
+  if (box) box.innerHTML = "";
+  const btn = form && form.querySelector("button[type=submit]");
+  if (btn) btn.classList.add("is-loading");
   lookup(v);
 }
 
-async function goScan() {
-  await stopScanner();
-  render(scanView());
-  const f = Html5QrcodeSupportedFormats;
-  scanner = new Html5Qrcode("reader", {
-    formatsToSupport: [f.UPC_A, f.UPC_E, f.EAN_13, f.EAN_8, f.CODE_128, f.UPC_EAN_EXTENSION],
-    verbose: false
+function loadScannerLib() {
+  if (window.Html5Qrcode) return Promise.resolve();
+  if (scannerLib) return scannerLib;
+  scannerLib = new Promise((resolve, reject) => {
+    const s = document.createElement("script");
+    s.src = QR_LIB;
+    s.async = true;
+    s.onload = () => window.Html5Qrcode ? resolve() : reject(new Error("ScannerUnavailable"));
+    s.onerror = () => { scannerLib = null; reject(new Error("ScannerUnavailable")); };
+    document.head.appendChild(s);
   });
+  return scannerLib;
+}
+
+function cameraMessage(err) {
+  const name = (err && err.name) || String(err || "");
+  if (!window.isSecureContext) return "The camera needs a secure https:// address. Open the deployed site, or use manual entry below.";
+  if (/ScannerUnavailable/.test(name)) return "Couldn't load the scanner. Check your connection, or use manual entry below.";
+  if (/NotAllowedError|Permission/i.test(name)) return "Camera access was blocked. Allow the camera for this site in your browser settings, then tap Scan again.";
+  if (/NotFoundError|OverconstrainedError|DevicesNotFound/i.test(name)) return "No usable camera found on this device. Use manual entry below.";
+  if (/NotReadableError|TrackStartError/i.test(name)) return "Another app is using the camera. Close it, then tap Scan again.";
+  return "Couldn't start the camera. Use manual entry below.";
+}
+
+async function goScan() {
+  const t = ++token;
+  await stopScanner();
+  view = "scan";
+  enterSub();
+  render(scanView());
+
+  const fail = e => {
+    if (t !== token) return;
+    const box = document.getElementById("scanerr");
+    const reader = document.getElementById("reader");
+    if (reader) reader.innerHTML = `<div class="cam-wait">Camera unavailable</div>`;
+    if (box) box.innerHTML = `<div class="err" style="margin-top:var(--s4)">${esc(cameraMessage(e))}</div>`;
+  };
+
   try {
-    await scanner.start(
+    await loadScannerLib();
+    if (t !== token) return;
+    const f = window.Html5QrcodeSupportedFormats;
+    const inst = new window.Html5Qrcode("reader", {
+      formatsToSupport: [f.UPC_A, f.UPC_E, f.EAN_13, f.EAN_8, f.CODE_128, f.UPC_EAN_EXTENSION],
+      verbose: false
+    });
+    scanner = inst;
+    await inst.start(
       { facingMode: "environment" },
       { fps: 10, qrbox: { width: 260, height: 160 }, aspectRatio: 1.4 },
-      async text => {
+      text => {
         const code = String(text).replace(/\D/g, "");
-        if (!code) return;
-        await stopScanner();
+        if (!code || t !== token) return;
+        if (navigator.vibrate) { try { navigator.vibrate(30); } catch (e) {} }
         lookup(code);
       },
       () => {}
     );
+    if (t !== token) { await stopScanner(); return; }
   } catch (e) {
-    const box = document.getElementById("scanerr");
-    if (box) box.innerHTML = `<div class="err" style="margin-top:16px">Can't open the camera. On a phone this needs an https:// address and camera permission. Use manual entry below.</div>`;
+    scanner = null;
+    fail(e);
   }
 }
 
-function openSearch(q) { window.open("https://duckduckgo.com/?q=" + encodeURIComponent(q + " recall"), "_blank", "noopener"); }
+async function refreshData(_arg, el) {
+  if (el) el.classList.add("is-loading");
+  try {
+    await buildIndex(true);
+    toast(recallIndex.fda || recallIndex.usda ? "Recall data updated" : "Couldn't reach the recall sources");
+  } catch (e) {
+    toast("Couldn't reach the recall sources");
+  }
+  const line = document.getElementById("srcline");
+  if (line) line.innerHTML = sourceTags();
+  else if (el) el.classList.remove("is-loading");
+}
+
+function openSearch(q) {
+  const w = window.open("https://duckduckgo.com/?q=" + encodeURIComponent(String(q || "") + " recall"), "_blank", "noopener,noreferrer");
+  if (!w) toast("Your browser blocked the new tab");
+}
+
+async function doInstall() {
+  if (!installPrompt) return;
+  const p = installPrompt;
+  installPrompt = null;
+  try { await p.prompt(); } catch (e) {}
+  if (view === "home") render(homeView());
+}
+
+/* ---------- event delegation: no inline handlers, so no HTML-in-JS quoting bugs ---------- */
+const ACTIONS = {
+  home: goHome, scan: goScan, manual: goManual, "manual-name": goManualName,
+  "submit-manual": submitManual, "submit-name": runNameSearch,
+  recheck: code => lookup(code), search: q => openSearch(q),
+  refresh: refreshData, install: doInstall
+};
+
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-act]");
+  if (!el || el.tagName === "FORM") return;
+  const fn = ACTIONS[el.dataset.act];
+  if (!fn) return;
+  e.preventDefault();
+  fn(el.dataset.arg, el);
+});
+
+document.addEventListener("submit", e => {
+  const form = e.target.closest("form[data-act]");
+  if (!form) return;
+  e.preventDefault();
+  const fn = ACTIONS[form.dataset.act];
+  if (fn) fn(form.dataset.arg, form);
+});
+
+// Clear a validation error as soon as the user starts correcting it.
+document.addEventListener("input", e => {
+  const el = e.target;
+  if (el.id !== "code" && el.id !== "nm") return;
+  el.removeAttribute("aria-invalid");
+  const box = document.getElementById(el.id === "code" ? "manualerr" : "nmerr");
+  if (box) box.innerHTML = "";
+});
+
+// Don't hold the camera open in a backgrounded tab.
+document.addEventListener("visibilitychange", () => { if (document.hidden) stopScanner(); });
+window.addEventListener("pagehide", () => { stopScanner(); });
+
+window.addEventListener("beforeinstallprompt", e => {
+  e.preventDefault();
+  installPrompt = e;
+  if (view === "home") render(homeView());
+});
+window.addEventListener("appinstalled", () => { installPrompt = null; });
 
 /* ---------- PWA install & service worker ---------- */
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").then(reg => {
+      reg.addEventListener("updatefound", () => {
+        const sw = reg.installing;
+        if (!sw) return;
+        sw.addEventListener("statechange", () => {
+          // Only prompt when this is an update to an already-controlled page,
+          // never on the very first install.
+          if (sw.state === "installed" && navigator.serviceWorker.controller) {
+            toast("A new version is ready.", "Reload", () => location.reload());
+          }
+        });
+      });
+    }).catch(() => {});
+  });
 }
 
 /* ---------- boot ---------- */
-render(homeView());
-buildIndex(false).then(() => render(homeView())).catch(() => {});
+renderHomeNow();
+buildIndex(false)
+  .catch(() => { recallIndex = recallIndex || { at: Date.now(), rows: [], fda: false, usda: false }; })
+  .then(() => {
+    // Patch just the source line — a full re-render here would wipe whatever
+    // screen the user has already navigated to, and reset their scroll.
+    const line = document.getElementById("srcline");
+    if (line && view === "home") line.innerHTML = sourceTags();
+  });
 </script>
 </body>
 </html>
