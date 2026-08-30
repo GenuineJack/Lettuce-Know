@@ -1,0 +1,60 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="leafGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#248a4f"/>
+      <stop offset="100%" stop-color="#154a2c"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Lettuce leaf: ruffled/wavy outer edge is the key recognizability
+       cue that a smooth teardrop lacks. Built from alternating outward
+       and inward curves rather than a single smooth path. -->
+  <path d="M100 20
+           C 108 26, 112 34, 110 42
+           C 120 34, 130 34, 136 42
+           C 140 52, 136 60, 128 64
+           C 140 62, 150 68, 152 78
+           C 154 90, 148 98, 138 100
+           C 150 102, 158 112, 158 124
+           C 158 136, 150 144, 140 144
+           C 148 152, 148 164, 140 172
+           C 132 180, 120 180, 114 172
+           C 112 182, 104 190, 100 190
+           C 96 190, 88 182, 86 172
+           C 80 180, 68 180, 60 172
+           C 52 164, 52 152, 60 144
+           C 50 144, 42 136, 42 124
+           C 42 112, 50 102, 62 100
+           C 52 98, 46 90, 48 78
+           C 50 68, 60 62, 72 64
+           C 64 60, 60 52, 64 42
+           C 70 34, 80 34, 90 42
+           C 88 34, 92 26, 100 20 Z"
+        fill="url(#leafGrad)"/>
+
+  <!-- Central rib -->
+  <line x1="100" y1="46" x2="100" y2="168" stroke="#0d3320" stroke-width="3" stroke-linecap="round" opacity="0.5"/>
+
+  <!-- Barcode veins radiating from the rib, doing double duty as both
+       lettuce vein texture and a scan/barcode cue. -->
+  <g stroke="#eafaf0" stroke-linecap="round" opacity="0.9">
+    <line x1="100" y1="58" x2="74" y2="70"  stroke-width="2.5"/>
+    <line x1="100" y1="58" x2="126" y2="70" stroke-width="2.5"/>
+
+    <line x1="100" y1="76" x2="68" y2="92"  stroke-width="4"/>
+    <line x1="100" y1="76" x2="132" y2="92" stroke-width="2"/>
+
+    <line x1="100" y1="96" x2="64" y2="116" stroke-width="2"/>
+    <line x1="100" y1="96" x2="136" y2="116" stroke-width="4"/>
+
+    <line x1="100" y1="118" x2="66" y2="138" stroke-width="4"/>
+    <line x1="100" y1="118" x2="134" y2="138" stroke-width="2.5"/>
+
+    <line x1="100" y1="140" x2="72" y2="156" stroke-width="2.5"/>
+    <line x1="100" y1="140" x2="128" y2="156" stroke-width="4"/>
+  </g>
+
+  <!-- Verdict checkmark badge -->
+  <circle cx="100" cy="106" r="25" fill="#eafaf0"/>
+  <path d="M88 106 L97 115 L114 96" fill="none" stroke="#1a6b3d" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

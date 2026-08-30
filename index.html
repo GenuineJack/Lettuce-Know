@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<meta name="theme-color" content="#0b1f16">
+<meta name="description" content="Scan a barcode to check FDA and USDA recalls and EU/US ingredient differences.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lettuce Know">
+<title>Lettuce Know</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="eu-us-data.js"></script>
+<style>
+:root{
+  --bg:#0b1f16; --bg-2:#0f261b; --card:#123122; --card-2:#16392a; --line:#1e4632; --line-soft:#173a29;
+  --fg:#eef7f0; --dim:#8fac9a; --dim-2:#6c8977;
+  --green:#4ade80; --green-dim:#2f7a52; --green-bg:#11331f;
+  --amber:#f0b429; --amber-bg:#2e2410; --amber-line:#5c4a1c;
+  --red:#f5615c; --red-bg:#2e1616; --red-line:#5c2321;
+  --blue:#5fb0ff;
+  font-size:16px;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  background:radial-gradient(120% 90% at 50% -10%, var(--bg-2), var(--bg) 60%);
+  color:var(--fg); min-height:100dvh; overscroll-behavior:none;
+  -webkit-font-smoothing:antialiased;
+}
+.display{font-family:'Space Grotesk',sans-serif}
+.wrap{max-width:480px;margin:0 auto;padding:0 20px calc(28px + env(safe-area-inset-bottom))}
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:calc(18px + env(safe-area-inset-top)) 0 8px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{width:34px;height:34px;flex-shrink:0}
+.brand-name{font-family:'Space Grotesk';font-weight:700;font-size:17px;letter-spacing:-.01em}
+h1{font-family:'Space Grotesk';font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
+h2{font-family:'Space Grotesk';font-size:22px;font-weight:600;letter-spacing:-.01em;line-height:1.25}
+h3{font-family:'Space Grotesk';font-size:15px;font-weight:600;letter-spacing:-.005em}
+.sub{color:var(--dim);font-size:15px;margin-top:8px;line-height:1.55}
+button{font:inherit;border:0;cursor:pointer;width:100%;border-radius:16px;padding:17px;font-weight:600;font-size:16px;transition:transform .08s ease, opacity .15s ease}
+button:active{transform:scale(.98)}
+.primary{background:linear-gradient(135deg,#4ade80,#2fbf6c);color:#06170e;box-shadow:0 8px 24px -8px rgba(74,222,128,.45)}
+.ghost{background:var(--card);color:var(--fg);border:1px solid var(--line)}
+.ghost:active{background:var(--card-2)}
+.text-btn{width:auto;background:none;padding:0;color:var(--dim);font-weight:500;font-size:15px}
+input{width:100%;padding:17px;border-radius:16px;background:var(--card);border:1px solid var(--line);color:var(--fg);font-size:17px;outline:0;font-family:inherit}
+input:focus{border-color:var(--green)}
+.stack>*+*{margin-top:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px}
+.tab-row{display:flex;gap:8px;padding:4px;background:var(--card);border:1px solid var(--line);border-radius:14px;margin-top:20px}
+.tab{flex:1;text-align:center;padding:10px 8px;border-radius:11px;font-size:13px;font-weight:600;color:var(--dim);cursor:pointer;transition:all .15s}
+.tab.active{background:var(--card-2);color:var(--fg)}
+.tab .dot{display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:5px;vertical-align:middle}
+
+/* Verdict ring — the signature element. Same ring shape as the scan
+   frame; on the result screen it resolves into the verdict icon. */
+.ring-wrap{display:flex;justify-content:center;margin:8px 0 20px}
+.ring{width:96px;height:96px;position:relative}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring-icon{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:34px}
+
+.verdict{border-radius:20px;padding:24px;border:1px solid;text-align:center}
+.v-bad{background:var(--red-bg);border-color:var(--red-line)}
+.v-ok{background:var(--green-bg);border-color:var(--green-dim)}
+.v-warn{background:var(--amber-bg);border-color:var(--amber-line)}
+.v-title{font-family:'Space Grotesk';font-size:23px;font-weight:700;letter-spacing:-.01em}
+.v-bad .v-title{color:var(--red)}.v-ok .v-title{color:var(--green)}.v-warn .v-title{color:var(--amber)}
+.v-body{margin-top:8px;font-size:15px;line-height:1.55;color:var(--fg);opacity:.85;max-width:36ch;margin-left:auto;margin-right:auto}
+
+.row{display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--line-soft);font-size:14px}
+.row:first-child{border-top:0;padding-top:0}
+.row span:first-child{color:var(--dim);flex-shrink:0}
+.row span:last-child{text-align:right;min-width:0;word-break:break-word;font-weight:500}
+.list{list-style:none;font-size:15px;line-height:1.6}
+.list li{padding:12px 0;border-top:1px solid var(--line-soft);opacity:.9;padding-left:22px;position:relative}
+.list li:first-child{border-top:0;padding-top:0}
+.list li::before{content:"→";position:absolute;left:0;color:var(--green-dim)}
+.label{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim-2);font-weight:700;margin-bottom:12px}
+
+#reader{width:100%;border-radius:20px;overflow:hidden;background:#000;min-height:320px;border:1px solid var(--line)}
+#reader video{width:100%!important;display:block}
+
+.hist{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:13px 0;border-top:1px solid var(--line-soft)}
+.hist:first-child{border-top:0;padding-top:0}
+.pill{font-size:11px;font-weight:700;padding:5px 10px;border-radius:99px;white-space:nowrap;text-transform:uppercase;letter-spacing:.03em}
+.p-bad{background:var(--red-bg);color:var(--red)}
+.p-ok{background:var(--green-bg);color:var(--green)}
+.p-warn{background:var(--amber-bg);color:var(--amber)}
+
+.back{background:none;color:var(--dim);padding:0;width:auto;font-size:15px;font-weight:500;margin:18px 0;display:flex;align-items:center;gap:6px}
+.spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--green);border-radius:50%;animation:s .8s linear infinite;margin:0 auto}
+@keyframes s{to{transform:rotate(360deg)}}
+.pulse{animation:p 1.6s ease-in-out infinite}
+@keyframes p{0%,100%{opacity:1}50%{opacity:.55}}
+.err{background:var(--red-bg);border:1px solid var(--red-line);color:var(--red);padding:15px;border-radius:14px;font-size:14px;line-height:1.5}
+.src{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;justify-content:center}
+.tag{font-size:11px;padding:6px 11px;border-radius:99px;border:1px solid var(--line);color:var(--dim);font-weight:500}
+.tag.up{border-color:var(--green-dim);color:var(--green)}
+.tag.down{border-color:var(--red-line);color:var(--red)}
+.foot{margin-top:28px;font-size:12px;color:var(--dim-2);line-height:1.6;text-align:center}
+.mini{font-size:13px;color:var(--dim);line-height:1.55;margin-top:10px}
+.divergence-card{background:var(--card);border:1px solid var(--amber-line);border-radius:16px;padding:18px;margin-top:12px}
+.divergence-card h3{color:var(--amber)}
+.eu-us-row{display:flex;gap:10px;margin-top:12px}
+.eu-us-col{flex:1;background:var(--bg-2);border-radius:10px;padding:12px}
+.eu-us-col .k{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim-2);font-weight:700;margin-bottom:4px}
+.eu-us-col .v{font-size:13px;line-height:1.4;font-weight:500}
+.badge-scroll{display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px;-ms-overflow-style:none;scrollbar-width:none}
+.badge-scroll::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;background:var(--amber-bg);border:1px solid var(--amber-line);color:var(--amber);font-size:12px;font-weight:600;padding:7px 13px;border-radius:99px}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"></div>
+
+<script>
+/* ============================================================
+   CONFIG
+   ============================================================ */
+const PROXY = "";                          // set to "/api/recalls" if FSIS CORS/bot-blocks the browser
+const FDC_API_KEY = "DEMO_KEY";            // swap in your own key from api.data.gov — DEMO_KEY is rate-limited to 30/hr
+
+const OFF  = "https://world.openfoodfacts.org/api/v0/product/";
+const FDA  = "https://api.fda.gov/food/enforcement.json";
+const FSIS = "https://www.fsis.usda.gov/fsis/api/recall/v/1";
+const FDC  = "https://api.nal.usda.gov/fdc/v1";
+
+const CACHE_KEY = "rc_index_v3";
+const CACHE_TTL = 12 * 60 * 60 * 1000;
+const WINDOW_DAYS = 400;
+
+let scanner = null;
+let index = null;
+let history = JSON.parse(localStorage.getItem("rc_history") || "[]");
+const app = document.getElementById("app");
+
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function stripHtml(s) {
+  if (!s) return "";
+  const d = document.createElement("div");
+  d.innerHTML = String(s);
+  return (d.textContent || "").replace(/\s+/g, " ").trim();
+}
+
+/* ---------- tokenising & matching (unchanged logic from v2) ---------- */
+const STOP = new Set(["the","and","with","for","from","organic","natural","original","fresh","brand","inc","llc","ltd","co","corp","company","foods","food","products","product","of","in","a","an","new","all","size","oz","lb","ct","pack","count","free","style"]);
+const tokens = (s, max) => String(s || "").toLowerCase()
+  .replace(/[^a-z0-9\s]/g, " ").split(/\s+/)
+  .filter(w => w.length > 2 && !STOP.has(w) && !/^\d+$/.test(w))
+  .filter((w, i, a) => a.indexOf(w) === i).slice(0, max || 12);
+
+const MEAT = /\b(beef|pork|chicken|turkey|ham|bacon|sausage|salami|pepperoni|jerky|meat|poultry|deli|hot ?dog|frank|bratwurst|chorizo|prosciutto|lamb|veal|duck|egg)\b/i;
+function isUsdaish(p) { return MEAT.test(`${p.name} ${p.brand} ${p.categories}`); }
+
+async function fetchFda() {
+  const d = new Date(Date.now() - WINDOW_DAYS * 864e5);
+  const from = d.toISOString().slice(0, 10).replace(/-/g, "");
+  const to = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  const out = [];
+  for (let skip = 0; skip < 2000; skip += 1000) {
+    const r = await fetch(`${FDA}?search=report_date:[${from}+TO+${to}]&limit=1000&skip=${skip}`);
+    if (r.status === 404) break;
+    if (!r.ok) throw new Error("fda " + r.status);
+    const j = await r.json();
+    const res = j.results || [];
+    res.forEach(x => out.push({
+      src: "FDA", desc: (x.product_description || "").slice(0, 400), firm: x.recalling_firm || "",
+      reason: (x.reason_for_recall || "").slice(0, 300), date: x.recall_initiation_date || x.report_date || "",
+      cls: x.classification || "", status: x.status || "", num: x.recall_number || "",
+      states: (x.distribution_pattern || "").slice(0, 120)
+    }));
+    if (res.length < 1000) break;
+  }
+  return out;
+}
+
+async function fetchFsis() {
+  const url = PROXY ? `${PROXY}?src=fsis` : `${FSIS}?field_archive_recall=0`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error("fsis " + r.status);
+  const j = await r.json();
+  const rows = Array.isArray(j) ? j : (j.results || []);
+  return rows.filter(x => (x.langcode || "English") === "English").map(x => ({
+    src: "USDA", desc: (stripHtml(x.field_product_items) || stripHtml(x.field_title)).slice(0, 400),
+    firm: x.field_establishment || "", reason: x.field_recall_reason || "",
+    date: (x.field_recall_date || "").replace(/-/g, ""), cls: x.field_recall_classification || x.field_risk_level || "",
+    status: x.field_active_notice === "True" ? "Active" : "Closed", num: x.field_recall_number || "",
+    states: x.field_states || "", title: stripHtml(x.field_title).slice(0, 200),
+    contact: stripHtml(x.field_company_media_contact).slice(0, 200)
+  }));
+}
+
+async function buildIndex(force) {
+  if (!force) {
+    try {
+      const c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null");
+      if (c && Date.now() - c.at < CACHE_TTL) { index = c; return c; }
+    } catch (e) {}
+  }
+  const out = { at: Date.now(), rows: [], fda: false, usda: false };
+  const [a, b] = await Promise.allSettled([fetchFda(), fetchFsis()]);
+  if (a.status === "fulfilled") { out.rows.push(...a.value); out.fda = true; }
+  if (b.status === "fulfilled") { out.rows.push(...b.value); out.usda = true; }
+  index = out;
+  try { localStorage.setItem(CACHE_KEY, JSON.stringify(out)); } catch (e) {}
+  return out;
+}
+
+function score(rec, brandT, nameT) {
+  const firmHay = rec.firm.toLowerCase();
+  const prodHay = `${rec.desc} ${rec.title || ""}`.toLowerCase();
+  const allHay = firmHay + " " + prodHay;
+  const brandHit = brandT.length ? brandT.some(w => allHay.includes(w)) : false;
+  const firmHit  = brandT.length ? brandT.some(w => firmHay.includes(w)) : false;
+  const nameOverlap = nameT.length ? nameT.filter(w => prodHay.includes(w)).length / nameT.length : 0;
+  if ((firmHit && nameOverlap >= 0.34) || nameOverlap >= 0.8) return { tier: "strong", n: nameOverlap };
+  if ((brandHit && nameOverlap >= 0.2) || nameOverlap >= 0.5)  return { tier: "possible", n: nameOverlap };
+  if (firmHit) return { tier: "brand", n: nameOverlap };
+  return null;
+}
+
+function match(product) {
+  const brandT = tokens(product.brand, 3);
+  const nameT = tokens(product.name, 6);
+  const hits = { strong: [], possible: [], brand: [] };
+  (index.rows || []).forEach(r => {
+    const s = score(r, brandT, nameT);
+    if (s) hits[s.tier].push({ rec: r, n: s.n });
+  });
+  const byDate = (a, b) => String(b.rec.date).localeCompare(String(a.rec.date));
+  hits.strong.sort(byDate); hits.possible.sort(byDate); hits.brand.sort(byDate);
+  return hits;
+}
+
+/* ---------- dual ingredient sourcing: Open Food Facts, then FoodData Central ---------- */
+async function fetchOff(code) {
+  const r = await fetch(`${OFF}${encodeURIComponent(code)}.json`);
+  const d = await r.json();
+  if (d.status !== 1 || !d.product) return null;
+  const p = d.product;
+  return {
+    name: p.product_name || p.generic_name || "",
+    brand: p.brands || "",
+    categories: p.categories || "",
+    image: p.image_front_small_url || null,
+    ingredientsText: p.ingredients_text || "",
+    additiveTags: p.additives_tags || [],
+    ingredientSource: "Open Food Facts"
+  };
+}
+
+async function fetchFdc(code) {
+  const url = `${FDC}/foods/search?api_key=${encodeURIComponent(FDC_API_KEY)}&query=${encodeURIComponent(code)}&dataType=Branded&pageSize=1`;
+  const r = await fetch(url);
+  if (!r.ok) return null;
+  const d = await r.json();
+  const f = (d.foods || [])[0];
+  if (!f) return null;
+  return {
+    name: f.description || "",
+    brand: f.brandOwner || f.brandName || "",
+    categories: f.foodCategory || "",
+    image: null,
+    ingredientsText: f.ingredients || "",
+    additiveTags: [],
+    ingredientSource: "USDA FoodData Central"
+  };
+}
+
+/* Merge: prefer whichever source has real ingredient text, since that's
+   the thing the EU/US panel depends on. Name/brand/image fall back
+   across sources so a partial hit from either still renders a normal card. */
+function mergeProduct(off, fdc, code) {
+  if (!off && !fdc) return null;
+  const base = off || fdc;
+  const ingredientsText = (off && off.ingredientsText) || (fdc && fdc.ingredientsText) || "";
+  const ingredientSource = (off && off.ingredientsText) ? off.ingredientSource : (fdc && fdc.ingredientsText) ? fdc.ingredientSource : null;
+  return {
+    name: base.name, brand: base.brand, categories: base.categories,
+    image: (off && off.image) || null, code,
+    ingredientsText,
+    additiveTags: (off && off.additiveTags) || [],
+    ingredientSource,
+    checkedOff: !!off, checkedFdc: !!fdc
+  };
+}
+
+/* ---------- flow ---------- */
+async function lookup(code) {
+  render(loadingView(code, "Loading recall data"));
+  try { await buildIndex(false); } catch (e) { index = index || { rows: [], fda: false, usda: false }; }
+
+  render(loadingView(code, "Identifying product"));
+  const [offR, fdcR] = await Promise.allSettled([fetchOff(code), fetchFdc(code)]);
+  const off = offR.status === "fulfilled" ? offR.value : null;
+  const fdc = fdcR.status === "fulfilled" ? fdcR.value : null;
+  const prod = mergeProduct(off, fdc, code);
+
+  if (!index.fda && !index.usda) return show({ state: "offline", code, product: prod });
+  if (!prod || !prod.name) return show({ state: "nodata", code });
+
+  const hits = match(prod);
+  const divergence = findDivergence(prod.additiveTags, prod.ingredientsText);
+  const payload = { product: prod, code, hits, divergence };
+
+  if (hits.strong.length)   return show({ ...payload, state: "recalled", tier: "strong" });
+  if (hits.possible.length) return show({ ...payload, state: "recalled", tier: "possible" });
+  return show({ ...payload, state: "clear" });
+}
+
+function show(r) {
+  if (["recalled","clear","nodata"].includes(r.state)) {
+    const nm = r.product ? (r.product.name || r.code) : r.code;
+    const st = r.state === "recalled" ? (r.tier === "strong" ? "recalled" : "possible") : r.state;
+    history = [{ name: nm, state: st, at: Date.now() }, ...history.filter(h => h.name !== nm)].slice(0, 8);
+    localStorage.setItem("rc_history", JSON.stringify(history));
+  }
+  render(resultView(r));
+}
+
+const fmtDate = s => { s = String(s || ""); return s.length === 8 ? `${s.slice(4,6)}/${s.slice(6,8)}/${s.slice(0,4)}` : (s || "Not listed"); };
+
+/* ---------- icon helpers (inline SVG, no external assets) ---------- */
+const ICONS = {
+  scan: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><line x1="7" y1="12" x2="17" y2="12"/></svg>`,
+  leaf: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 4 13c0-4 3-9 8-11 5 2 8 7 8 11a7 7 0 0 1-7 7c-1 0-2-.2-3-.6"/><path d="M12 12v8"/></svg>`,
+  check: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`,
+  x: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+  q: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+  arrow: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`
+};
+
+function verdictRing(kind) {
+  // kind: ok | bad | warn
+  const color = kind === "ok" ? "var(--green)" : kind === "bad" ? "var(--red)" : "var(--amber)";
+  const icon = kind === "ok" ? ICONS.check : kind === "bad" ? ICONS.x : ICONS.q;
+  return `<div class="ring-wrap"><div class="ring">
+    <svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="44" fill="none" stroke="${color}" stroke-width="5" stroke-linecap="round" opacity="0.9"/></svg>
+    <div class="ring-icon" style="color:${color}">${icon}</div>
+  </div></div>`;
+}
+
+function brandMark() {
+  // Lettuce leaf with barcode-style veins and a verdict checkmark —
+  // the leaf shape carries the pun, the veins carry the scan cue,
+  // the checkmark carries the app's actual job.
+  return `<svg class="brand-mark" viewBox="0 0 200 200" fill="none">
+    <path d="M100 20 C 108 26, 112 34, 110 42 C 120 34, 130 34, 136 42 C 140 52, 136 60, 128 64 C 140 62, 150 68, 152 78 C 154 90, 148 98, 138 100 C 150 102, 158 112, 158 124 C 158 136, 150 144, 140 144 C 148 152, 148 164, 140 172 C 132 180, 120 180, 114 172 C 112 182, 104 190, 100 190 C 96 190, 88 182, 86 172 C 80 180, 68 180, 60 172 C 52 164, 52 152, 60 144 C 50 144, 42 136, 42 124 C 42 112, 50 102, 62 100 C 52 98, 46 90, 48 78 C 50 68, 60 62, 72 64 C 64 60, 60 52, 64 42 C 70 34, 80 34, 90 42 C 88 34, 92 26, 100 20 Z" fill="#4ade80"/>
+    <line x1="100" y1="46" x2="100" y2="168" stroke="#0d3320" stroke-width="4" stroke-linecap="round" opacity="0.35"/>
+    <g stroke="#0b1f16" stroke-linecap="round" opacity="0.5">
+      <line x1="100" y1="58" x2="74" y2="70" stroke-width="3"/><line x1="100" y1="58" x2="126" y2="70" stroke-width="3"/>
+      <line x1="100" y1="76" x2="68" y2="92" stroke-width="4.5"/><line x1="100" y1="76" x2="132" y2="92" stroke-width="2.5"/>
+      <line x1="100" y1="96" x2="64" y2="116" stroke-width="2.5"/><line x1="100" y1="96" x2="136" y2="116" stroke-width="4.5"/>
+      <line x1="100" y1="118" x2="66" y2="138" stroke-width="4.5"/><line x1="100" y1="118" x2="134" y2="138" stroke-width="3"/>
+      <line x1="100" y1="140" x2="72" y2="156" stroke-width="3"/><line x1="100" y1="140" x2="128" y2="156" stroke-width="4.5"/>
+    </g>
+    <circle cx="100" cy="106" r="27" fill="#0b1f16"/>
+    <path d="M88 106 L97 115 L114 96" fill="none" stroke="#4ade80" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+
+/* ---------- views ---------- */
+function sourceTags(extra) {
+  if (!index) return "";
+  const age = index.at ? Math.round((Date.now() - index.at) / 6e4) : 0;
+  const tags = [
+    `<span class="tag ${index.fda ? "up" : "down"}">FDA ${index.fda ? "loaded" : "unavailable"}</span>`,
+    `<span class="tag ${index.usda ? "up" : "down"}">USDA ${index.usda ? "loaded" : "unavailable"}</span>`
+  ];
+  if (extra) tags.push(extra);
+  else tags.push(`<span class="tag">${index.rows.length} recalls &middot; ${age < 1 ? "just now" : age + "m ago"}</span>`);
+  return `<div class="src">${tags.join("")}</div>`;
+}
+
+function homeView() {
+  const h = history.length ? `
+    <div style="margin-top:32px">
+      <div class="label">Recent scans</div>
+      ${history.map(x => `<div class="hist">
+        <div style="min-width:0;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.name)}</div>
+        <span class="pill ${x.state === "recalled" ? "p-bad" : x.state === "clear" ? "p-ok" : "p-warn"}">${
+          x.state === "recalled" ? "Recalled" : x.state === "possible" ? "Possible" : x.state === "clear" ? "Clear" : "No data"
+        }</span>
+      </div>`).join("")}
+    </div>` : "";
+  return `
+    <div class="topbar"><div class="brand">${brandMark()}<span class="brand-name">Lettuce Know</span></div></div>
+    <div style="padding-top:8px">
+      <h1>We'll tell you.</h1>
+      <p class="sub">Scan any barcode for active FDA and USDA recalls, plus where US and EU food rules disagree.</p>
+    </div>
+    <div class="stack" style="margin-top:28px">
+      <button class="primary" onclick="goScan()">
+        <span style="display:flex;align-items:center;justify-content:center;gap:9px">
+          <span style="width:20px;height:20px;display:inline-flex">${ICONS.scan}</span> Scan a barcode
+        </span>
+      </button>
+      <button class="ghost" onclick="goManual()">Enter the number instead</button>
+    </div>
+    ${index ? sourceTags() : `<p class="mini" style="text-align:center">Loading recall sources&hellip;</p>`}
+    ${h}
+    <p class="foot">FDA covers most packaged food. USDA FSIS covers meat, poultry, and egg. Ingredient data comes from Open Food Facts and USDA FoodData Central — availability varies by product.</p>`;
+}
+
+function scanView() {
+  return `
+    <button class="back" onclick="goHome()">${iconSpan(ICONS.arrow)} Back</button>
+    <div id="reader"></div>
+    <p class="sub" style="text-align:center;margin-top:18px">Hold the barcode inside the frame.</p>
+    <div id="scanerr"></div>
+    <div class="stack" style="margin-top:20px">
+      <button class="ghost" onclick="goManual()">Enter the number instead</button>
+    </div>`;
+}
+
+function iconSpan(svg, size) { return `<span style="width:${size||16}px;height:${size||16}px;display:inline-flex;flex-shrink:0">${svg}</span>`; }
+
+function manualView() {
+  return `
+    <button class="back" onclick="goHome()">${iconSpan(ICONS.arrow)} Back</button>
+    <h2>Enter barcode</h2>
+    <p class="sub">The number printed under the barcode, usually 12 or 13 digits.</p>
+    <div class="stack" style="margin-top:24px">
+      <input id="code" type="text" inputmode="numeric" autocomplete="off" placeholder="0 00000 00000 0">
+      <div id="manualerr"></div>
+      <button class="primary" onclick="submitManual()">Check it</button>
+    </div>`;
+}
+
+function loadingView(code, msg) {
+  return `<div style="padding:100px 0 40px;text-align:center">
+    <div class="spin"></div>
+    <p class="sub pulse" style="margin-top:22px">${esc(msg)}</p>
+    <p class="mini">${esc(code)}</p>
+  </div>`;
+}
+
+function recallCard(h) {
+  const c = h.rec;
+  return `<div class="card" style="margin-top:14px">
+    <div class="label">${esc(c.src)} recall ${esc(c.num || "")}</div>
+    <div style="font-size:15px;line-height:1.5;font-weight:600">${esc(c.reason || "No reason listed")}</div>
+    <div class="row"><span>Firm</span><span>${esc(c.firm || "Not listed")}</span></div>
+    <div class="row"><span>Date</span><span>${fmtDate(c.date)}</span></div>
+    <div class="row"><span>Class</span><span>${esc(c.cls || "Not listed")}</span></div>
+    <div class="row"><span>Status</span><span>${esc(c.status || "Not listed")}</span></div>
+    ${c.states ? `<div class="row"><span>Where</span><span>${esc(c.states)}</span></div>` : ""}
+    ${c.desc ? `<div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft)">
+      <div class="label">Products covered</div>
+      <div style="font-size:14px;line-height:1.6;color:var(--dim)">${esc(c.desc)}</div>
+    </div>` : ""}
+    ${c.contact ? `<div class="mini">Company contact: ${esc(c.contact)}</div>` : ""}
+  </div>`;
+}
+
+function divergenceSection(divergence, ingredientSource) {
+  if (!ingredientSource) {
+    return `<div class="card" style="margin-top:16px">
+      <div class="label">EU / US ingredient check</div>
+      <p class="mini" style="margin-top:0">No ingredient list available for this product from either source, so this can't be checked. Not a signal either way.</p>
+    </div>`;
+  }
+  if (!divergence.length) {
+    return `<div class="card" style="margin-top:16px">
+      <div class="label">EU / US ingredient check</div>
+      <p class="mini" style="margin-top:0">Nothing on this ingredient list appears on our list of substances treated differently by the FDA and EU. Checked against ingredient data from ${esc(ingredientSource)}.</p>
+    </div>`;
+  }
+  return `<div style="margin-top:16px">
+    <div class="label" style="margin-bottom:10px">EU / US regulatory notes</div>
+    <div class="badge-scroll">${divergence.map(d => `<span class="chip">${esc(d.name)}</span>`).join("")}</div>
+    ${divergence.map(d => `
+      <div class="divergence-card">
+        <h3>${esc(d.name)}${d.eNumber ? ` <span style="color:var(--dim);font-weight:500">(${esc(d.eNumber)})</span>` : ""}</h3>
+        <div class="eu-us-row">
+          <div class="eu-us-col"><div class="k">United States</div><div class="v">${esc(d.usStatus)}</div></div>
+          <div class="eu-us-col"><div class="k">European Union</div><div class="v">${esc(d.euStatus)}</div></div>
+        </div>
+        <p class="mini">${esc(d.note)}</p>
+      </div>`).join("")}
+    <p class="mini" style="text-align:center;margin-top:14px">Regulatory facts, not a safety verdict — the EU and FDA weigh the same evidence differently. Ingredient data from ${esc(ingredientSource)}.</p>
+  </div>`;
+}
+
+function resultView(r) {
+  const p = r.product;
+  const head = p ? `
+    <div style="display:flex;gap:14px;align-items:center;margin-bottom:8px">
+      ${p.image ? `<img src="${esc(p.image)}" alt="" style="width:52px;height:52px;object-fit:contain;border-radius:12px;background:#fff;flex-shrink:0">` : ""}
+      <div style="min-width:0">
+        <h2>${esc(p.name)}</h2>
+        ${p.brand ? `<p class="sub" style="margin-top:2px">${esc(p.brand)}</p>` : ""}
+      </div>
+    </div>` : `<h2 style="margin-bottom:8px">Barcode ${esc(r.code)}</h2>`;
+
+  let body = "";
+
+  if (r.state === "recalled") {
+    const list = r.tier === "strong" ? r.hits.strong : r.hits.possible;
+    const strong = r.tier === "strong";
+    body = `
+      ${verdictRing(strong ? "bad" : "warn")}
+      <div class="verdict ${strong ? "v-bad" : "v-warn"}">
+        <div class="v-title">${strong ? "Recalled" : "Possible match"}</div>
+        <div class="v-body">${strong
+          ? "This matches an active recall record. Check the lot code and date on your package before assuming it's affected."
+          : "A recall partly matches this product. Compare the covered products below to your package — treat this as a prompt to check, not a confirmation."}</div>
+      </div>
+      ${list.slice(0, 3).map(recallCard).join("")}
+      <div class="card" style="margin-top:14px">
+        <div class="label">What to do</div>
+        <ul class="list">
+          <li>Compare the lot code and best-by date on your package to the covered products above.</li>
+          <li>If it matches, don't eat it — most stores refund recalled items without a receipt.</li>
+          <li>Report a reaction to the FDA at safetyreporting.hhs.gov, or for meat and poultry call USDA at 888-674-6854.</li>
+        </ul>
+      </div>
+      <div class="stack" style="margin-top:14px">
+        <button class="ghost" onclick="openSearch('${esc(String(list[0].rec.firm || "").replace(/'/g, ""))} ${esc(list[0].rec.num || "")}')">Look up this recall notice</button>
+      </div>
+      ${divergenceSection(r.divergence, p.ingredientSource)}
+      ${r.hits.brand.length && !strong ? `<p class="mini" style="text-align:center">${r.hits.brand.length} other recall${r.hits.brand.length > 1 ? "s" : ""} from this brand in the last year.</p>` : ""}`;
+  }
+
+  if (r.state === "clear") {
+    const usdaish = isUsdaish(p);
+    const gap = !index.usda && usdaish;
+    body = `
+      ${verdictRing(gap ? "warn" : "ok")}
+      <div class="verdict ${gap ? "v-warn" : "v-ok"}">
+        <div class="v-title">${gap ? "Partly checked" : "No recall found"}</div>
+        <div class="v-body">${gap
+          ? "This looks like meat, poultry, or egg — regulated by the USDA — and that source didn't load. FDA data came back clean, but doesn't cover this kind of product. Treat this as unchecked."
+          : "Nothing in the FDA or USDA recall data matches this product."}</div>
+      </div>
+      ${sourceTags()}
+      ${divergenceSection(r.divergence, p.ingredientSource)}
+      ${r.hits.brand.length ? `<div class="card" style="margin-top:14px">
+        <div class="label">Same brand, different products</div>
+        <div class="mini" style="margin-top:0">${r.hits.brand.length} recall${r.hits.brand.length > 1 ? "s" : ""} from this brand in the last year. Not your product, but worth knowing.</div>
+        ${r.hits.brand.slice(0, 2).map(recallCard).join("")}
+      </div>` : ""}
+      <div class="card" style="margin-top:14px">
+        <div class="label">Worth knowing</div>
+        <ul class="list">
+          <li>FDA publishes weekly, so a very recent recall may not be listed yet.</li>
+          <li>Matching works on brand and product names — an unusually named product can be missed.</li>
+        </ul>
+      </div>`;
+  }
+
+  if (r.state === "nodata") {
+    body = `
+      ${verdictRing("warn")}
+      <div class="verdict v-warn">
+        <div class="v-title">No data on this product</div>
+        <div class="v-body">This barcode isn't in either product database, so nothing could be checked. That's not a safety signal — we just can't tell.</div>
+      </div>
+      <div class="stack" style="margin-top:14px">
+        <button class="ghost" onclick="openSearch('${esc(r.code)}')">Search the web for this barcode</button>
+        <button class="ghost" onclick="goManualName()">Search recalls by name instead</button>
+      </div>`;
+  }
+
+  if (r.state === "offline") {
+    body = `
+      ${verdictRing("bad")}
+      <div class="verdict v-bad">
+        <div class="v-title">Couldn't load recall data</div>
+        <div class="v-body">Neither FDA nor USDA responded, so nothing was checked. Usually a weak connection inside a store.</div>
+      </div>
+      <div class="stack" style="margin-top:14px">
+        <button class="primary" onclick="lookup('${esc(r.code)}')">Try again</button>
+      </div>`;
+  }
+
+  return `<button class="back" onclick="goHome()">${iconSpan(ICONS.arrow)} Back</button>${head}
+    <div style="margin-top:20px">${body}</div>
+    <div class="stack" style="margin-top:24px"><button class="primary" onclick="goScan()">Scan another</button></div>`;
+}
+
+function goManualName() {
+  render(`<button class="back" onclick="goHome()">${iconSpan(ICONS.arrow)} Back</button>
+    <h2>Search recalls by name</h2>
+    <p class="sub">Type the brand and product as printed on the package.</p>
+    <div class="stack" style="margin-top:24px">
+      <input id="nm" type="text" autocomplete="off" placeholder="e.g. Fresh Express chopped kit">
+      <div id="nmerr"></div>
+      <button class="primary" onclick="runNameSearch()">Search</button>
+    </div>`);
+  setTimeout(() => { const e = document.getElementById("nm"); if (e) e.focus(); }, 50);
+}
+
+async function runNameSearch() {
+  const v = (document.getElementById("nm").value || "").trim();
+  const box = document.getElementById("nmerr");
+  if (v.length < 3) { box.innerHTML = `<div class="err">Type a bit more.</div>`; return; }
+  box.innerHTML = "";
+  render(loadingView(v, "Searching recalls"));
+  try { await buildIndex(false); } catch (e) {}
+  const prod = { name: v, brand: v.split(/\s+/).slice(0, 2).join(" "), categories: "", image: null, code: v, ingredientsText: "", additiveTags: [], ingredientSource: null };
+  const hits = match(prod);
+  const payload = { product: prod, code: v, hits, divergence: [] };
+  if (hits.strong.length)   return show({ ...payload, state: "recalled", tier: "strong" });
+  if (hits.possible.length) return show({ ...payload, state: "recalled", tier: "possible" });
+  show({ ...payload, state: "clear" });
+}
+
+/* ---------- nav ---------- */
+function render(html) { app.innerHTML = html; window.scrollTo(0, 0); }
+
+async function stopScanner() {
+  if (!scanner) return;
+  try { await scanner.stop(); } catch (e) {}
+  try { scanner.clear(); } catch (e) {}
+  scanner = null;
+}
+
+async function goHome() { await stopScanner(); render(homeView()); }
+async function goManual() {
+  await stopScanner(); render(manualView());
+  setTimeout(() => { const e = document.getElementById("code"); if (e) e.focus(); }, 50);
+}
+
+function submitManual() {
+  const v = (document.getElementById("code").value || "").replace(/\D/g, "");
+  const box = document.getElementById("manualerr");
+  if (v.length < 8) { box.innerHTML = `<div class="err">Enter at least 8 digits.</div>`; return; }
+  box.innerHTML = "";
+  lookup(v);
+}
+
+async function goScan() {
+  await stopScanner();
+  render(scanView());
+  const f = Html5QrcodeSupportedFormats;
+  scanner = new Html5Qrcode("reader", {
+    formatsToSupport: [f.UPC_A, f.UPC_E, f.EAN_13, f.EAN_8, f.CODE_128, f.UPC_EAN_EXTENSION],
+    verbose: false
+  });
+  try {
+    await scanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: { width: 260, height: 160 }, aspectRatio: 1.4 },
+      async text => {
+        const code = String(text).replace(/\D/g, "");
+        if (!code) return;
+        await stopScanner();
+        lookup(code);
+      },
+      () => {}
+    );
+  } catch (e) {
+    const box = document.getElementById("scanerr");
+    if (box) box.innerHTML = `<div class="err" style="margin-top:16px">Can't open the camera. On a phone this needs an https:// address and camera permission. Use manual entry below.</div>`;
+  }
+}
+
+function openSearch(q) { window.open("https://duckduckgo.com/?q=" + encodeURIComponent(q + " recall"), "_blank", "noopener"); }
+
+/* ---------- PWA install & service worker ---------- */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+}
+
+/* ---------- boot ---------- */
+render(homeView());
+buildIndex(false).then(() => render(homeView())).catch(() => {});
+</script>
+</body>
+</html>
