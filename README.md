@@ -10,6 +10,7 @@ eu-us-data.js            — sourced reference table of US/EU additive divergenc
 manifest.webmanifest     — PWA manifest
 sw.js                    — service worker (app-shell caching + install support)
 api/recalls.js           — optional Vercel serverless function, proxies the USDA FSIS API
+api/fdc.js               — Vercel serverless function, proxies USDA FoodData Central and holds the API key
 icons/                   — app icons (regular + maskable, for Android adaptive icons)
 brand/                   — logo source files (mark.svg, lockup.svg) for anything outside the app (store listing, README, etc.)
 ```
@@ -24,7 +25,7 @@ brand/                   — logo source files (mark.svg, lockup.svg) for anythi
 
 ## Before deploying
 
-- **FDC_API_KEY**: `index.html` currently uses `DEMO_KEY` for the USDA FoodData Central API (30 req/hr limit). Get a free key at https://api.data.gov/signup/ and swap it in near the top of the `<script>` block (`const FDC_API_KEY = ...`).
+- **FDC_API_KEY**: get a free key at https://api.data.gov/signup/ and set it as an environment variable named `FDC_API_KEY` in the Vercel project settings — it is read server-side by `api/fdc.js`, so it never reaches the browser and never goes in git. With no key set, the proxy falls back to `DEMO_KEY` (30 req/hr), so the app still works, just rate-limited. There is no key to edit in `index.html`; it calls `/api/fdc` instead of FoodData Central directly, and a failed lookup degrades to Open Food Facts as before.
 - **USDA FSIS CORS**: the FSIS recall API blocked at least one direct fetch attempt during development (bot detection). If the "USDA" status tag on the home screen shows red/unavailable after deploying, switch on the included proxy: set `const PROXY = "/api/recalls";` near the top of `index.html`. The proxy in `api/recalls.js` is written for Vercel's serverless function format.
 - **HTTPS required for camera**: barcode scanning needs `https://` — won't work from a local `file://` open. Test on the deployed URL, not locally, if checking camera behavior.
 

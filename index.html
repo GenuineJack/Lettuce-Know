@@ -126,12 +126,11 @@ input:focus{border-color:var(--green)}
    CONFIG
    ============================================================ */
 const PROXY = "";                          // set to "/api/recalls" if FSIS CORS/bot-blocks the browser
-const FDC_API_KEY = "DEMO_KEY";            // swap in your own key from api.data.gov — DEMO_KEY is rate-limited to 30/hr
 
 const OFF  = "https://world.openfoodfacts.org/api/v0/product/";
 const FDA  = "https://api.fda.gov/food/enforcement.json";
 const FSIS = "https://www.fsis.usda.gov/fsis/api/recall/v/1";
-const FDC  = "https://api.nal.usda.gov/fdc/v1";
+const FDC  = "/api/fdc";                   // serverless proxy — holds the FoodData Central key server-side (api/fdc.js)
 
 const CACHE_KEY = "rc_index_v3";
 const CACHE_TTL = 12 * 60 * 60 * 1000;
@@ -258,7 +257,7 @@ async function fetchOff(code) {
 }
 
 async function fetchFdc(code) {
-  const url = `${FDC}/foods/search?api_key=${encodeURIComponent(FDC_API_KEY)}&query=${encodeURIComponent(code)}&dataType=Branded&pageSize=1`;
+  const url = `${FDC}?code=${encodeURIComponent(code)}`;
   const r = await fetch(url);
   if (!r.ok) return null;
   const d = await r.json();
