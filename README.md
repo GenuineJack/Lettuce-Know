@@ -1,6 +1,6 @@
 # Lettuce Know
 
-Scan a food barcode to check it against FDA and USDA recalls, and see where US and EU food additive rules disagree. Built as a single-page PWA — no build step, no framework, no backend required (one optional serverless proxy, see below).
+Scan a food barcode to check it against FDA and USDA recalls, and see where US and EU food additive rules disagree. Watch products for future recalls, flag your own allergens, browse the recall index, and pantry-check a shelf of items in one go. Built as a single-page PWA — no build step, no framework, no backend required (two small serverless proxies, see below). Everything personal (watchlist, flags, history) lives in localStorage on the device.
 
 ## What's here
 
@@ -24,6 +24,17 @@ test/                    — browser test suite (dev only; excluded from the dep
 4. If ingredient data was found, it's checked against `eu-us-data.js` for known US/EU regulatory divergence (titanium dioxide, potassium bromate, etc.) — stated as regulatory fact, not a safety score.
 5. Result renders as one of: recalled (strong or possible match), clear, no data, or offline/error — each state is visually and textually distinct so an outage never gets confused with a clean result.
 6. If the product's brand appears in two or more recall records in the window, the result also shows a brand recall history: how many records, the date span, and the most recent reason.
+
+## App surfaces
+
+Hash-based routing (`#/product/<code>`, `#/recalls`, `#/saved`, `#/settings`, `#/search/<query>`) makes results shareable URLs and gives the browser Back button real meaning. A bottom tab bar covers the four top-level screens:
+
+- **Home** — scan/type CTAs, live source status, a recall-count teaser, recent checks, and alert banners when a watched product newly matches a recall.
+- **Recalls** — the full index the scans are checked against, newest first, filterable by source and searchable by brand/product/reason.
+- **Saved** — the watchlist. Watching a product from its result screen re-checks it against every data refresh; a new match raises a Home banner until the user views the result (which acknowledges it).
+- **Settings** — allergen toggles (the 9 major US allergens) plus free-text avoid terms, a state picker (recalls that don't list your state get a "may not have reached you" note and sort lower — never hidden), and data controls. All stored on-device.
+
+The scan screen adds a pantry-check mode (scan several items in a row, get a summary), scan-from-photo, and a torch toggle on cameras that support it. The manifest declares app shortcuts and a GET share target, so sharing text containing a barcode into the installed PWA jumps straight to that product's result.
 
 ## Before deploying
 

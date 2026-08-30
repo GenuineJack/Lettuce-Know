@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b1f16">
 <meta name="color-scheme" content="dark">
-<meta name="description" content="Scan a barcode to check FDA and USDA recalls and EU/US ingredient differences.">
+<meta name="description" content="Scan a grocery barcode to check live FDA and USDA recalls, watch products for new recalls, and flag ingredients the US and EU regulate differently.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -31,6 +31,7 @@
   --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px; --s7:32px; --s8:40px;
   /* Radius scale */
   --r-sm:10px; --r-md:14px; --r-lg:18px; --r-xl:20px; --r-pill:99px;
+  --tabbar-h:64px;
   font-size:16px;
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -42,12 +43,14 @@ body{
   color:var(--fg); min-height:100dvh; overscroll-behavior-y:none;
   -webkit-font-smoothing:antialiased;
 }
+::selection{background:var(--green-dim);color:var(--fg)}
 .display{font-family:'Space Grotesk',sans-serif}
 .wrap{max-width:480px;margin:0 auto;padding:0 var(--s5) calc(var(--s7) + env(safe-area-inset-bottom))}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);padding:calc(18px + env(safe-area-inset-top)) 0 var(--s2)}
 .brand{display:flex;align-items:center;gap:var(--s3)}
 .brand-mark{width:34px;height:34px;flex-shrink:0}
 .brand-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;letter-spacing:-.01em}
+.topbar-actions{display:flex;align-items:center;gap:var(--s1)}
 
 /* Type scale — 28 / 22 / 17 / 15 / 13 / 11, line-heights tuned per step. */
 h1{font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
@@ -56,10 +59,10 @@ h3{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;letter-
 h1:focus,h2:focus,h3:focus{outline:none}
 .sub{color:var(--dim);font-size:15px;margin-top:var(--s2);line-height:1.55}
 
-/* ---- Buttons: one primitive, three variants, all states defined ---- */
+/* ---- Buttons: one primitive, variants, all states defined ---- */
 button{font:inherit;border:0;cursor:pointer;width:100%;border-radius:var(--r-md);padding:16px;
-  font-weight:600;font-size:16px;min-height:52px;position:relative;
-  transition:transform .08s ease, opacity .15s ease, background .15s ease, filter .15s ease}
+  font-weight:600;font-size:16px;min-height:52px;position:relative;color:var(--fg);background:none;
+  transition:transform .08s ease, opacity .15s ease, background .15s ease, filter .15s ease, border-color .15s ease}
 button:active:not(:disabled){transform:scale(.98)}
 button:disabled{opacity:.5;cursor:not-allowed;transform:none}
 .primary{background:linear-gradient(135deg,#4ade80,#2fbf6c);color:#06170e;box-shadow:0 8px 24px -8px rgba(74,222,128,.45)}
@@ -79,13 +82,14 @@ button.is-loading::after{content:"";position:absolute;inset:0;margin:auto;width:
 /* Visible focus ring on every interactive element. */
 :focus-visible{outline:2px solid var(--green);outline-offset:3px;border-radius:var(--s1)}
 
-input{width:100%;padding:16px;border-radius:var(--r-md);background:var(--card);border:1px solid var(--line);
+input,select{width:100%;padding:16px;border-radius:var(--r-md);background:var(--card);border:1px solid var(--line);
   color:var(--fg);font-size:17px;font-family:inherit;outline:0;transition:border-color .15s, box-shadow .15s}
 input::placeholder{color:var(--dim-2);opacity:.75}
-input:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(74,222,128,.18)}
+input:focus,select:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(74,222,128,.18)}
 input[aria-invalid="true"]{border-color:var(--red)}
 input[aria-invalid="true"]:focus{box-shadow:0 0 0 3px rgba(245,97,92,.2)}
 input[aria-invalid="true"]:focus-visible{outline-color:var(--red)}
+select{appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%238fac9a' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 16px center;padding-right:44px}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .field-hint{font-size:13px;color:var(--dim);margin-top:var(--s2);line-height:1.5}
 
@@ -108,9 +112,9 @@ input[aria-invalid="true"]:focus-visible{outline-color:var(--red)}
 @keyframes pop{from{transform:scale(.4);opacity:0}to{transform:scale(1);opacity:1}}
 
 .verdict{border-radius:var(--r-xl);padding:var(--s6);border:1px solid;text-align:center}
-.v-bad{background:var(--red-bg);border-color:var(--red-line)}
-.v-ok{background:var(--green-bg);border-color:var(--green-dim)}
-.v-warn{background:var(--amber-bg);border-color:var(--amber-line)}
+.v-bad{background:var(--red-bg);border-color:var(--red-line);box-shadow:0 12px 40px -18px rgba(245,97,92,.35)}
+.v-ok{background:var(--green-bg);border-color:var(--green-dim);box-shadow:0 12px 40px -18px rgba(74,222,128,.3)}
+.v-warn{background:var(--amber-bg);border-color:var(--amber-line);box-shadow:0 12px 40px -18px rgba(240,180,41,.28)}
 .v-title{font-family:'Space Grotesk',sans-serif;font-size:23px;font-weight:700;letter-spacing:-.01em}
 .v-bad .v-title{color:var(--red)}.v-ok .v-title{color:var(--green)}.v-warn .v-title{color:var(--amber)}
 .v-body{margin-top:var(--s2);font-size:15px;line-height:1.55;color:var(--fg);opacity:.9;max-width:36ch;margin-left:auto;margin-right:auto}
@@ -126,27 +130,47 @@ input[aria-invalid="true"]:focus-visible{outline-color:var(--red)}
 .list li:first-child::before{top:.55em}
 .label{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim-2);font-weight:700;margin-bottom:var(--s3)}
 
+.scan-frame{position:relative}
 #reader{width:100%;border-radius:var(--r-xl);overflow:hidden;background:#000;min-height:320px;
-  max-height:min(64dvh,460px);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center}
+  max-height:min(60dvh,440px);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center}
 #reader video{width:100%!important;display:block}
 .cam-wait{color:var(--dim);font-size:14px;display:flex;flex-direction:column;align-items:center;gap:var(--s3);padding:var(--s5)}
+.torch{position:absolute;right:var(--s3);bottom:var(--s3);z-index:2;width:44px;height:44px;min-height:44px;
+  padding:0;border-radius:50%;background:rgba(11,31,22,.78);border:1px solid var(--line);color:var(--fg);
+  display:inline-flex;align-items:center;justify-content:center}
+.torch[aria-pressed="true"]{background:var(--amber);color:#2e2410;border-color:var(--amber)}
 
-/* Recent scans are actionable — tapping one re-checks it. */
+/* Segmented control (scan mode, recall source filter). */
+.seg{display:flex;gap:var(--s1);padding:var(--s1);background:var(--card);border:1px solid var(--line);border-radius:var(--r-md)}
+.seg button{flex:1;min-height:44px;padding:10px var(--s2);border-radius:var(--r-sm);font-size:14px;font-weight:600;color:var(--dim)}
+.seg button.active{background:var(--card-2);color:var(--fg)}
+.seg button:active{transform:none}
+
+/* Tappable list rows (recent scans, saved items, batch summary). */
 .hist{display:flex;justify-content:space-between;align-items:center;gap:var(--s3);padding:var(--s3) var(--s2);
-  border-top:1px solid var(--line-soft);width:100%;background:none;border-radius:0;min-height:52px;
+  border-top:1px solid var(--line-soft);width:100%;background:none;border-radius:var(--r-sm);min-height:52px;
   text-align:left;font-weight:400;font-size:15px;color:var(--fg)}
 .hist:first-of-type{border-top:0}
 .hist:active{background:var(--card)}
 @media (hover:hover){.hist:hover{background:var(--card)}}
 .hist-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.pill{font-size:11px;font-weight:700;padding:5px 10px;border-radius:var(--r-pill);white-space:nowrap;text-transform:uppercase;letter-spacing:.03em}
+.hist-sub{display:block;font-size:12px;color:var(--dim-2);margin-top:2px}
+.pill{font-size:11px;font-weight:700;padding:5px 10px;border-radius:var(--r-pill);white-space:nowrap;text-transform:uppercase;letter-spacing:.03em;flex-shrink:0}
 .p-bad{background:var(--red-bg);color:var(--red)}
 .p-ok{background:var(--green-bg);color:var(--green)}
 .p-warn{background:var(--amber-bg);color:var(--amber)}
+.p-dim{background:var(--card-2);color:var(--dim)}
+.saved-row{display:flex;align-items:center;gap:var(--s1);border-top:1px solid var(--line-soft)}
+.saved-row:first-of-type{border-top:0}
+.saved-row .hist{border-top:0;flex:1;min-width:0}
 
 .back{background:none;color:var(--dim);width:auto;font-size:15px;font-weight:500;margin:var(--s3) 0 var(--s2) -6px;
   display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 6px;border-radius:var(--r-sm)}
 .linkish{background:none;color:var(--dim);width:auto;font-size:13px;font-weight:600;padding:var(--s2);min-height:44px;border-radius:var(--r-sm)}
+.icon-btn{width:40px;height:40px;min-height:40px;padding:0;flex-shrink:0;background:none;
+  color:var(--dim);border-radius:50%;display:inline-flex;align-items:center;justify-content:center}
+.icon-btn:active{background:var(--card-2)}
+@media (hover:hover){.icon-btn:hover{background:var(--card-2);color:var(--fg)}}
 .spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--green);border-radius:50%;animation:s .8s linear infinite;margin:0 auto}
 @keyframes s{to{transform:rotate(360deg)}}
 .err{background:var(--red-bg);border:1px solid var(--red-line);color:#ffb3b0;padding:14px;border-radius:var(--r-md);font-size:14px;line-height:1.5}
@@ -169,6 +193,7 @@ input[aria-invalid="true"]:focus-visible{outline-color:var(--red)}
 .tag.down{border-color:var(--red-line);color:var(--red)}
 .tag-skel{width:96px;height:27px;border-radius:var(--r-pill);background:var(--card);border:1px solid var(--line);animation:p 1.4s ease-in-out infinite}
 .foot{margin-top:var(--s7);font-size:12.5px;color:var(--dim-2);line-height:1.6;text-align:center}
+.made{text-align:center;margin-top:var(--s3);font-size:12.5px;color:var(--dim-2);line-height:1.6}
 .mini{font-size:13px;color:var(--dim);line-height:1.55;margin-top:var(--s3)}
 .divergence-card{background:var(--card);border:1px solid var(--amber-line);border-radius:var(--r-md);padding:var(--s5);margin-top:var(--s3)}
 .divergence-card h3{color:var(--amber)}
@@ -180,18 +205,91 @@ input[aria-invalid="true"]:focus-visible{outline-color:var(--red)}
 .badge-scroll{display:flex;gap:var(--s2);overflow-x:auto;padding:2px 0 var(--s1);-ms-overflow-style:none;scrollbar-width:none}
 .badge-scroll::-webkit-scrollbar{display:none}
 .chip{flex-shrink:0;background:var(--amber-bg);border:1px solid var(--amber-line);color:var(--amber);font-size:12px;font-weight:600;padding:7px 13px;border-radius:var(--r-pill)}
+.chip-red{background:var(--red-bg);border-color:var(--red-line);color:var(--red)}
 .src-link{color:var(--dim);font-size:12px;text-decoration:underline;text-underline-offset:2px}
 .src-link:hover,.src-link:focus-visible{color:var(--green)}
 
-/* Toast — one shared surface for confirmations and update prompts. */
-#toast{position:fixed;left:50%;transform:translateX(-50%) translateY(140%);
-  bottom:calc(var(--s5) + env(safe-area-inset-bottom));z-index:50;width:min(440px,calc(100vw - 32px));
-  background:var(--card-2);border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s3) var(--s4);
-  box-shadow:0 12px 32px -10px rgba(0,0,0,.6);display:flex;align-items:center;gap:var(--s3);
-  font-size:14px;transition:transform .25s cubic-bezier(.4,0,.2,1),opacity .25s;opacity:0;pointer-events:none}
-#toast.show{transform:translateX(-50%) translateY(0);opacity:1;pointer-events:auto}
-#toast .t-msg{flex:1;min-width:0;line-height:1.4}
-#toast button{width:auto;min-height:40px;padding:var(--s2) var(--s3);font-size:14px;background:none;color:var(--green);border-radius:var(--r-sm)}
+/* Toggle chips (allergen picker, avoid list). */
+.chips{display:flex;flex-wrap:wrap;gap:var(--s2)}
+.chip-toggle{width:auto;min-height:44px;padding:10px 15px;font-size:14px;font-weight:600;
+  background:var(--card);border:1px solid var(--line);color:var(--dim);border-radius:var(--r-pill)}
+.chip-toggle.on{background:var(--green-bg);border-color:var(--green-dim);color:var(--green)}
+.chip-x{width:auto;min-height:44px;padding:10px 13px;font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:8px;
+  background:var(--amber-bg);border:1px solid var(--amber-line);color:var(--amber);border-radius:var(--r-pill)}
+.chip-x svg{width:13px;height:13px}
+
+/* Watch / share action chips on the result screen. */
+.act-row{display:flex;gap:var(--s2);margin:var(--s3) 0 0;flex-wrap:wrap}
+.chip-act{width:auto;flex:1;min-height:44px;padding:10px 14px;font-size:14px;font-weight:600;
+  background:var(--card);border:1px solid var(--line);color:var(--fg);border-radius:var(--r-md);
+  display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.chip-act svg{width:16px;height:16px}
+.chip-act.on{background:var(--green-bg);border-color:var(--green-dim);color:var(--green)}
+
+/* Watchlist alert banner on Home. */
+.banner{display:flex;align-items:center;gap:var(--s3);text-align:left;background:var(--red-bg);
+  border:1px solid var(--red-line);border-radius:var(--r-md);padding:var(--s4);margin-top:var(--s4);
+  font-size:14px;font-weight:500;line-height:1.45;color:var(--fg)}
+.banner.warn{background:var(--amber-bg);border-color:var(--amber-line)}
+.banner-ic{flex-shrink:0;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:rgba(245,97,92,.15);color:var(--red)}
+.banner.warn .banner-ic{background:rgba(240,180,41,.15);color:var(--amber)}
+.banner-ic svg{width:18px;height:18px}
+.banner .chev{margin-left:auto;flex-shrink:0;color:var(--dim)}
+
+/* Recall-browser teaser card on Home. */
+.teaser{display:flex;align-items:center;gap:var(--s3);text-align:left;background:var(--card);
+  border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s4);margin-top:var(--s5);
+  font-size:14px;font-weight:500;color:var(--fg)}
+.teaser .t-num{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:var(--green);flex-shrink:0;min-width:34px;text-align:center}
+.teaser .t-sub{display:block;font-size:12px;color:var(--dim-2);font-weight:400;margin-top:2px}
+.teaser .chev{margin-left:auto;flex-shrink:0;color:var(--dim)}
+
+/* Recall browser rows — native <details> for free accessibility. */
+.recd{border-top:1px solid var(--line-soft)}
+.recd:first-of-type{border-top:0}
+.recd summary{list-style:none;cursor:pointer;padding:var(--s4) var(--s2);border-radius:var(--r-sm);min-height:44px}
+.recd summary::-webkit-details-marker{display:none}
+.recd summary:active{background:var(--card)}
+@media (hover:hover){.recd summary:hover{background:var(--card)}}
+.recd-top{display:flex;align-items:center;gap:var(--s2);margin-bottom:6px}
+.recd-date{font-size:12px;color:var(--dim-2)}
+.recd-firm{display:block;font-size:15px;font-weight:600;line-height:1.4;overflow-wrap:anywhere}
+.recd-why{display:block;font-size:13px;color:var(--dim);line-height:1.5;margin-top:2px;overflow-wrap:anywhere}
+.recd[open] summary{background:var(--card);border-radius:var(--r-sm) var(--r-sm) 0 0}
+.recd-body{padding:0 var(--s2) var(--s3)}
+
+/* Batch (pantry check) strip on the scan screen. */
+.batchbar{margin-top:var(--s4)}
+.batch-list{display:flex;flex-direction:column;gap:var(--s2);margin-bottom:var(--s3)}
+.batch-item{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s3) var(--s4);font-size:14px}
+.batch-item .spin{width:16px;height:16px;border-width:2px;margin:0}
+.stat-row{display:flex;gap:var(--s2);margin:var(--s4) 0}
+.stat{flex:1;background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s3);text-align:center}
+.stat .n{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700}
+.stat .k{font-size:11px;color:var(--dim-2);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-top:2px}
+.stat.bad .n{color:var(--red)}.stat.ok .n{color:var(--green)}.stat.warn .n{color:var(--amber)}
+
+/* Bottom tab bar — top-level screens only. */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:center;
+  background:rgba(11,31,22,.92);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  border-top:1px solid var(--line-soft);padding:6px 0 calc(6px + env(safe-area-inset-bottom))}
+.tabbar-inner{display:flex;width:100%;max-width:480px}
+.tabbar button{flex:1;min-height:52px;padding:6px 2px;border-radius:var(--r-sm);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:3px;font-size:10.5px;font-weight:600;letter-spacing:.02em;color:var(--dim-2)}
+.tabbar button svg{width:21px;height:21px}
+.tabbar button.active{color:var(--green)}
+.tabbar button:active{transform:none;background:var(--card)}
+.tabspace{height:calc(var(--tabbar-h) + env(safe-area-inset-bottom))}
+
+/* Empty states. */
+.empty{text-align:center;padding:var(--s8) var(--s5)}
+.empty .e-ic{width:56px;height:56px;margin:0 auto var(--s4);border-radius:50%;background:var(--card);
+  border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--dim)}
+.empty .e-ic svg{width:26px;height:26px}
+.empty h2{font-size:19px}
+.empty p{margin-top:var(--s2);font-size:14px;color:var(--dim);line-height:1.55;max-width:34ch;margin-left:auto;margin-right:auto}
 
 /* About sheet — native <dialog> gives focus trapping and Esc for free. */
 dialog#about{border:0;padding:0;background:transparent;color:var(--fg);
@@ -205,21 +303,20 @@ dialog#about::backdrop{background:rgba(4,14,10,.74)}
 .sheet h3{margin-top:var(--s5);margin-bottom:var(--s2);color:var(--green)}
 .sheet p{font-size:14px;line-height:1.6;color:var(--dim)}
 .sheet .list{font-size:14px}
-.icon-btn{width:40px;height:40px;min-height:40px;padding:0;flex-shrink:0;background:none;
-  color:var(--dim);border-radius:50%;display:inline-flex;align-items:center;justify-content:center}
-.icon-btn:active{background:var(--card-2)}
-@media (hover:hover){.icon-btn:hover{background:var(--card-2);color:var(--fg)}}
-.topbar-actions{display:flex;align-items:center;gap:var(--s1)}
-.made{text-align:center;margin-top:var(--s5);font-size:12.5px;color:var(--dim-2);line-height:1.6}
-.scan-frame{position:relative}
-.torch{position:absolute;right:var(--s3);bottom:var(--s3);z-index:2;width:44px;height:44px;min-height:44px;
-  padding:0;border-radius:50%;background:rgba(11,31,22,.78);border:1px solid var(--line);color:var(--fg);
-  display:inline-flex;align-items:center;justify-content:center}
-.torch[aria-pressed="true"]{background:var(--amber);color:#2e2410;border-color:var(--amber)}
+
+/* Toast — one shared surface for confirmations and update prompts. */
+#toast{position:fixed;left:50%;transform:translateX(-50%) translateY(140%);
+  bottom:calc(var(--tabbar-h) + var(--s4) + env(safe-area-inset-bottom));z-index:50;width:min(440px,calc(100vw - 32px));
+  background:var(--card-2);border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s3) var(--s4);
+  box-shadow:0 12px 32px -10px rgba(0,0,0,.6);display:flex;align-items:center;gap:var(--s3);
+  font-size:14px;transition:transform .25s cubic-bezier(.4,0,.2,1),opacity .25s;opacity:0;pointer-events:none}
+#toast.show{transform:translateX(-50%) translateY(0);opacity:1;pointer-events:auto}
+#toast .t-msg{flex:1;min-width:0;line-height:1.4;overflow-wrap:anywhere}
+#toast button{width:auto;min-height:40px;padding:var(--s2) var(--s3);font-size:14px;background:none;color:var(--green);border-radius:var(--r-sm)}
 
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
-  .ring circle{stroke-dashoffset:0}
+  .ring > svg circle{stroke-dashoffset:0}
 }
 </style>
 </head>
@@ -228,21 +325,24 @@ dialog#about::backdrop{background:rgba(4,14,10,.74)}
 <main class="wrap" id="app" aria-busy="false"></main>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <div id="sr-status" class="sr-only" role="status" aria-live="polite"></div>
+<input type="file" id="photoin" accept="image/*" class="sr-only" tabindex="-1" aria-hidden="true">
 <dialog id="about" aria-labelledby="about-h">
   <div class="sheet">
     <div class="sheet-head">
       <h2 id="about-h">What this does</h2>
       <button class="icon-btn" data-act="about-close" aria-label="Close">&#10005;</button>
     </div>
-    <p>Scan a food barcode and Lettuce Know checks it against active FDA and USDA recall notices, then flags any ingredients the US and EU regulate differently.</p>
+    <p>Scan a food barcode and Lettuce Know checks it against active FDA and USDA recall notices, then flags any ingredients the US and EU regulate differently. Save a product to your watchlist and it gets re-checked every time the recall data refreshes.</p>
     <h3>Where the data comes from</h3>
     <ul class="list">
       <li>Recalls: openFDA and USDA FSIS, refreshed every 12 hours.</li>
       <li>Products: Open Food Facts and USDA FoodData Central.</li>
     </ul>
     <h3>What it can't tell you</h3>
-    <p>Recalls are matched on brand and product name, not an exact barcode link &mdash; no public database maps one to the other. So &ldquo;no recall found&rdquo; means nothing matched, not that a product is certified safe. The EU/US notes state what each regulator permits, not a safety score.</p>
+    <p>Recalls are matched on brand and product name, not an exact barcode link &mdash; no public database maps one to the other. So &ldquo;no recall found&rdquo; means nothing matched, not that a product is certified safe. The EU/US notes state what each regulator permits, not a safety score. Ingredient flags read the label text in the product databases &mdash; &ldquo;may contain&rdquo; warnings often aren't in that data, so always read the package if you have an allergy.</p>
     <p style="margin-top:var(--s4)">Always check the lot code and date on your own package before deciding.</p>
+    <h3>Spotted a wrong match?</h3>
+    <p>Matching is fuzzy by design, so mistakes are possible &mdash; <a class="src-link" href="mailto:hello@genuinejack.xyz?subject=Lettuce%20Know%20feedback">email what you found</a> and it helps make the matching better.</p>
   </div>
 </dialog>
 <noscript>
@@ -263,9 +363,12 @@ const FDA  = "https://api.fda.gov/food/enforcement.json";
 const FSIS = "https://www.fsis.usda.gov/fsis/api/recall/v/1";
 const FDC  = "/api/fdc";                   // serverless proxy — holds the FoodData Central key server-side (api/fdc.js)
 const QR_LIB = "https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js";
+const FEEDBACK = "mailto:hello@genuinejack.xyz?subject=Lettuce%20Know%20feedback";
 
 const CACHE_KEY = "rc_index_v3";
 const HIST_KEY = "rc_history";
+const WATCH_KEY = "rc_watch_v1";
+const PREFS_KEY = "rc_prefs_v1";
 const CACHE_TTL = 12 * 60 * 60 * 1000;
 const WINDOW_DAYS = 400;
 const MAX_ROWS = 4000;                     // hard cap so a bad feed can't blow out localStorage
@@ -273,11 +376,15 @@ const TIMEOUT = 15000;
 
 let scanner = null;
 let scannerLib = null;
-let recallIndex = null;                    // was `index` — that name shadowed too easily
+let recallIndex = null;
 let installPrompt = null;
-let view = "home";                         // home | scan | manual | name | loading | result
 let token = 0;                             // bumped on every navigation; stale async work checks it
-let pushed = false;                        // whether we've pushed a history entry for a sub-screen
+let lastR = null;                          // the result currently on screen (watch/share act on it)
+let batch = [];                            // pantry-check queue, session-only
+let batchMode = false;
+let recallsFilter = "all";
+let recallsQuery = "";
+let recallsShown = 25;
 const app = document.getElementById("app");
 
 /* ---------- storage: never let corrupt or full storage kill the app ---------- */
@@ -298,12 +405,20 @@ const store = {
 
 let recent = store.get(HIST_KEY, []);
 if (!Array.isArray(recent)) recent = [];
+let watchlist = store.get(WATCH_KEY, []);
+if (!Array.isArray(watchlist)) watchlist = [];
+let prefs = store.get(PREFS_KEY, {});
+if (!prefs || typeof prefs !== "object" || Array.isArray(prefs)) prefs = {};
+prefs.allergens = Array.isArray(prefs.allergens) ? prefs.allergens : [];
+prefs.avoid = Array.isArray(prefs.avoid) ? prefs.avoid : [];
+prefs.state = typeof prefs.state === "string" ? prefs.state : "";
+const savePrefs = () => store.set(PREFS_KEY, prefs);
+const saveWatch = () => store.set(WATCH_KEY, watchlist);
 
 const esc = s => String(s == null ? "" : s)
   .replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
-/* Inert parse — DOMParser never loads resources or runs handlers, unlike
-   assigning innerHTML on a detached node. */
+/* Inert parse — DOMParser never loads resources or runs handlers. */
 const HTML_PARSER = new DOMParser();
 function stripHtml(s) {
   if (!s) return "";
@@ -322,6 +437,15 @@ async function fetchWithTimeout(url, ms) {
   const timer = setTimeout(() => ac.abort(), ms || TIMEOUT);
   try { return await fetch(url, { signal: ac.signal }); }
   finally { clearTimeout(timer); }
+}
+
+/* Word-boundary test shared with eu-us-data.js's matcher; falls back to a
+   plain substring check if that file ever fails to load. */
+function termHit(term, lowerText) {
+  const t = String(term).toLowerCase().trim();
+  if (!t || !lowerText) return false;
+  if (typeof boundaryRx === "function") return boundaryRx(t).test(lowerText);
+  return lowerText.includes(t);
 }
 
 /* ---------- tokenising & matching (unchanged logic from v2) ---------- */
@@ -371,14 +495,25 @@ async function fetchFsis() {
   }));
 }
 
-/* Lowercased haystacks are computed once per index rather than once per
-   row per lookup, and are stripped before the index is written to storage. */
+/* Lowercased haystacks computed once per index, stripped before persisting. */
 function prepareRows(rows) {
   (rows || []).forEach(r => {
     r._f = String(r.firm || "").toLowerCase();
     r._p = `${r.desc || ""} ${r.title || ""}`.toLowerCase();
   });
   return rows || [];
+}
+
+/* localStorage quota varies by browser. Rather than silently caching nothing
+   on a large index, shed the oldest rows and retry so a smaller but still
+   useful index survives. */
+function persistIndex(out) {
+  let rows = out.rows;
+  for (let i = 0; i < 5 && rows.length; i++) {
+    if (store.set(CACHE_KEY, { ...out, rows })) return rows.length;
+    rows = rows.slice(0, Math.floor(rows.length * 0.6));
+  }
+  return 0;
 }
 
 async function buildIndex(force) {
@@ -395,29 +530,40 @@ async function buildIndex(force) {
   if (a.status === "fulfilled") { out.rows.push(...a.value); out.fda = true; }
   if (b.status === "fulfilled") { out.rows.push(...b.value); out.usda = true; }
   if (out.rows.length > MAX_ROWS) out.rows = out.rows.slice(0, MAX_ROWS);
-  // Persist before adding the derived fields, so they don't double the payload.
   if (out.fda || out.usda) persistIndex(out);
   prepareRows(out.rows);
   recallIndex = out;
   return out;
 }
 
-/* localStorage quota varies by browser and by what else the origin has stored.
- * Rather than silently caching nothing on a large index — which would mean
- * refetching megabytes on every launch — shed the oldest rows and retry, so a
- * smaller but still useful index survives. */
-function persistIndex(out) {
-  let rows = out.rows;
-  for (let i = 0; i < 5 && rows.length; i++) {
-    if (store.set(CACHE_KEY, { ...out, rows })) return rows.length;
-    rows = rows.slice(0, Math.floor(rows.length * 0.6));
-  }
-  return 0;
+function score(rec, brandT, nameT) {
+  const firmHay = rec._f || "";
+  const prodHay = rec._p || "";
+  const allHay = firmHay + " " + prodHay;
+  const brandHit = brandT.length ? brandT.some(w => allHay.includes(w)) : false;
+  const firmHit  = brandT.length ? brandT.some(w => firmHay.includes(w)) : false;
+  const nameOverlap = nameT.length ? nameT.filter(w => prodHay.includes(w)).length / nameT.length : 0;
+  if ((firmHit && nameOverlap >= 0.34) || nameOverlap >= 0.8) return { tier: "strong", n: nameOverlap };
+  if ((brandHit && nameOverlap >= 0.2) || nameOverlap >= 0.5)  return { tier: "possible", n: nameOverlap };
+  if (firmHit) return { tier: "brand", n: nameOverlap };
+  return null;
 }
 
-/* Brand-level recall history: does this firm show up repeatedly, rather than
- * just on this one product? Deliberately a count and a date span, not a rate
- * or a score — the underlying match is by name, so precision would be false. */
+function match(product) {
+  const brandT = tokens(product.brand, 3);
+  const nameT = tokens(product.name, 6);
+  const hits = { strong: [], possible: [], brand: [] };
+  ((recallIndex && recallIndex.rows) || []).forEach(r => {
+    const s = score(r, brandT, nameT);
+    if (s) hits[s.tier].push({ rec: r, n: s.n });
+  });
+  const byDate = (a, b) => String(b.rec.date).localeCompare(String(a.rec.date));
+  hits.strong.sort(byDate); hits.possible.sort(byDate); hits.brand.sort(byDate);
+  return hits;
+}
+
+/* Brand-level recall history: a count and a date span, not a rate or score —
+   the underlying match is by name, so precision would be false. */
 function brandHistory(hits) {
   const seen = new Set();
   const recs = [];
@@ -455,32 +601,6 @@ function brandHistoryCard(bh) {
   </div>`;
 }
 
-function score(rec, brandT, nameT) {
-  const firmHay = rec._f || "";
-  const prodHay = rec._p || "";
-  const allHay = firmHay + " " + prodHay;
-  const brandHit = brandT.length ? brandT.some(w => allHay.includes(w)) : false;
-  const firmHit  = brandT.length ? brandT.some(w => firmHay.includes(w)) : false;
-  const nameOverlap = nameT.length ? nameT.filter(w => prodHay.includes(w)).length / nameT.length : 0;
-  if ((firmHit && nameOverlap >= 0.34) || nameOverlap >= 0.8) return { tier: "strong", n: nameOverlap };
-  if ((brandHit && nameOverlap >= 0.2) || nameOverlap >= 0.5)  return { tier: "possible", n: nameOverlap };
-  if (firmHit) return { tier: "brand", n: nameOverlap };
-  return null;
-}
-
-function match(product) {
-  const brandT = tokens(product.brand, 3);
-  const nameT = tokens(product.name, 6);
-  const hits = { strong: [], possible: [], brand: [] };
-  ((recallIndex && recallIndex.rows) || []).forEach(r => {
-    const s = score(r, brandT, nameT);
-    if (s) hits[s.tier].push({ rec: r, n: s.n });
-  });
-  const byDate = (a, b) => String(b.rec.date).localeCompare(String(a.rec.date));
-  hits.strong.sort(byDate); hits.possible.sort(byDate); hits.brand.sort(byDate);
-  return hits;
-}
-
 /* ---------- dual ingredient sourcing: Open Food Facts, then FoodData Central ---------- */
 async function fetchOff(code) {
   const r = await fetchWithTimeout(`${OFF}${encodeURIComponent(code)}.json`);
@@ -516,9 +636,7 @@ async function fetchFdc(code) {
   };
 }
 
-/* Merge: prefer whichever source has real ingredient text, since that's
-   the thing the EU/US panel depends on. Name/brand/image fall back
-   across sources so a partial hit from either still renders a normal card. */
+/* Merge: prefer whichever source has real ingredient text. */
 function mergeProduct(off, fdc, code) {
   if (!off && !fdc) return null;
   const base = off || fdc;
@@ -535,45 +653,156 @@ function mergeProduct(off, fdc, code) {
   };
 }
 
-/* ---------- flow ---------- */
-async function lookup(code) {
-  code = String(code || "").replace(/\D/g, "");
-  if (!code) return goHome();
-  await stopScanner();
-  const t = ++token;
-  view = "loading";
-  enterSub();
+/* ---------- personal flags: allergens + avoid list ---------- */
+const ALLERGENS = [
+  { id: "milk", name: "Milk / dairy", terms: ["milk", "whey", "casein", "caseinate", "butter", "cream", "lactose", "ghee", "yogurt", "cheese", "custard"] },
+  { id: "egg", name: "Egg", terms: ["egg", "eggs", "albumin", "albumen", "ovalbumin", "mayonnaise", "meringue"] },
+  { id: "peanut", name: "Peanut", terms: ["peanut", "peanuts", "groundnut", "arachis"] },
+  { id: "treenut", name: "Tree nuts", terms: ["almond", "walnut", "cashew", "pecan", "pistachio", "hazelnut", "macadamia", "brazil nut", "pine nut", "praline", "marzipan"] },
+  { id: "soy", name: "Soy", terms: ["soy", "soya", "soybean", "soybeans", "edamame", "tofu", "tempeh", "miso"] },
+  { id: "wheat", name: "Wheat / gluten", terms: ["wheat", "flour", "gluten", "semolina", "spelt", "farina", "durum", "couscous", "seitan", "malt"] },
+  { id: "fish", name: "Fish", terms: ["fish", "anchovy", "anchovies", "cod", "salmon", "tuna", "tilapia", "trout", "sardine", "sardines", "worcestershire"] },
+  { id: "shellfish", name: "Shellfish", terms: ["shrimp", "prawn", "crab", "lobster", "crawfish", "crayfish", "clam", "mussel", "oyster", "scallop", "squid", "calamari", "mollusk"] },
+  { id: "sesame", name: "Sesame", terms: ["sesame", "tahini", "benne"] }
+];
 
+function findFlags(ingredientsText) {
+  const out = [];
+  const t = String(ingredientsText || "").toLowerCase();
+  if (!t) return out;
+  ALLERGENS.forEach(a => {
+    if (!prefs.allergens.includes(a.id)) return;
+    const hit = a.terms.find(term => termHit(term, t));
+    if (hit) out.push({ label: a.name, term: hit, kind: "allergen" });
+  });
+  prefs.avoid.forEach(term => {
+    const tt = String(term).trim();
+    if (tt && termHit(tt, t)) out.push({ label: tt, term: tt, kind: "avoid" });
+  });
+  return out;
+}
+
+function flagsSection(p) {
+  const total = prefs.allergens.length + prefs.avoid.length;
+  if (!total) return "";
+  if (!p || !p.ingredientsText) {
+    return `<div class="card" style="margin-top:var(--s4)">
+      <div class="label">Your flags</div>
+      <p class="mini" style="margin-top:0">No ingredient list is available for this product, so your flagged ingredients couldn't be checked. Read the package if it matters.</p>
+    </div>`;
+  }
+  const hits = findFlags(p.ingredientsText);
+  if (!hits.length) {
+    return `<div class="card" style="margin-top:var(--s4)">
+      <div class="label">Your flags</div>
+      <p class="mini" style="margin-top:0">None of your ${total} flagged ingredient${total > 1 ? "s" : ""} appear on this label. &ldquo;May contain&rdquo; warnings often aren't in the data &mdash; check the package if you have an allergy.</p>
+    </div>`;
+  }
+  return `<div class="card" style="margin-top:var(--s4);border-color:var(--red-line)">
+    <div class="label" style="color:var(--red)">On your flag list</div>
+    <div class="chips" style="margin-bottom:var(--s3)">${hits.map(h =>
+      `<span class="chip chip-red">${esc(h.label)}${h.label.toLowerCase().includes(h.term.toLowerCase()) ? "" : ` &middot; ${esc(h.term)}`}</span>`).join("")}</div>
+    <p class="mini" style="margin-top:0">Found in the ingredient list from ${esc(p.ingredientSource || "the product database")}. Always confirm on the package &mdash; database labels can lag reformulations.</p>
+  </div>`;
+}
+
+/* ---------- your state: annotate recalls that don't list it ---------- */
+const STATES = { AL:"Alabama", AK:"Alaska", AZ:"Arizona", AR:"Arkansas", CA:"California", CO:"Colorado", CT:"Connecticut", DE:"Delaware", DC:"District of Columbia", FL:"Florida", GA:"Georgia", HI:"Hawaii", ID:"Idaho", IL:"Illinois", IN:"Indiana", IA:"Iowa", KS:"Kansas", KY:"Kentucky", LA:"Louisiana", ME:"Maine", MD:"Maryland", MA:"Massachusetts", MI:"Michigan", MN:"Minnesota", MS:"Mississippi", MO:"Missouri", MT:"Montana", NE:"Nebraska", NV:"Nevada", NH:"New Hampshire", NJ:"New Jersey", NM:"New Mexico", NY:"New York", NC:"North Carolina", ND:"North Dakota", OH:"Ohio", OK:"Oklahoma", OR:"Oregon", PA:"Pennsylvania", RI:"Rhode Island", SC:"South Carolina", SD:"South Dakota", TN:"Tennessee", TX:"Texas", UT:"Utah", VT:"Vermont", VA:"Virginia", WA:"Washington", WV:"West Virginia", WI:"Wisconsin", WY:"Wyoming" };
+
+/* true = definitely lists the state (or nationwide); false = has a distribution
+   list that doesn't mention it; null = no usable distribution info. */
+function reachesState(rec, ab) {
+  const s = String(rec.states || "");
+  if (!s || !ab || !STATES[ab]) return null;
+  if (/nation ?wide|national(ly)? distribut|all (us |u\.s\. )?states|throughout the (us|u\.s\.|united states)/i.test(s)) return true;
+  if (new RegExp("(?:^|[^A-Za-z])" + ab + "(?![A-Za-z])").test(s)) return true;
+  const name = STATES[ab].toLowerCase().replace(/\s+/g, "\\s+");
+  if (new RegExp("(?:^|[^a-z])" + name + "(?![a-z])").test(s.toLowerCase())) return true;
+  return false;
+}
+
+/* Stable partition: recalls that reach the user's state (or are unknown)
+   first, clearly-elsewhere ones after. Never hidden. */
+function sortForState(list) {
+  if (!prefs.state) return list;
+  const near = [], far = [];
+  list.forEach(h => (reachesState(h.rec, prefs.state) === false ? far : near).push(h));
+  return near.concat(far);
+}
+
+/* ---------- verdict pipeline (shared by single lookup and batch) ---------- */
+function computeVerdict(prod) {
+  if (!recallIndex || (!recallIndex.fda && !recallIndex.usda)) return { state: "offline" };
+  if (!prod || !prod.name) return { state: "nodata" };
+  const hits = match(prod);
+  const divergence = typeof findDivergence === "function"
+    ? findDivergence(prod.additiveTags, prod.ingredientsText) : [];
+  if (hits.strong.length)   return { state: "recalled", tier: "strong", hits, divergence };
+  if (hits.possible.length) return { state: "recalled", tier: "possible", hits, divergence };
+  return { state: "clear", hits, divergence };
+}
+
+async function fetchProduct(code) {
+  const [offR, fdcR] = await Promise.allSettled([fetchOff(code), fetchFdc(code)]);
+  const off = offR.status === "fulfilled" ? offR.value : null;
+  const fdc = fdcR.status === "fulfilled" ? fdcR.value : null;
+  return mergeProduct(off, fdc, code);
+}
+
+async function lookup(code, t) {
+  code = String(code || "").replace(/\D/g, "");
+  if (!code) return renderHome();
   render(loadingView(code, 0), { busy: true });
   try { await buildIndex(false); } catch (e) { recallIndex = recallIndex || { rows: [], fda: false, usda: false }; }
   if (t !== token) return;
 
   render(loadingView(code, 1), { busy: true });
-  const [offR, fdcR] = await Promise.allSettled([fetchOff(code), fetchFdc(code)]);
+  const prod = await fetchProduct(code);
   if (t !== token) return;
-  const off = offR.status === "fulfilled" ? offR.value : null;
-  const fdc = fdcR.status === "fulfilled" ? fdcR.value : null;
-  const prod = mergeProduct(off, fdc, code);
-
-  if (!recallIndex.fda && !recallIndex.usda) return show({ state: "offline", code, product: prod });
-  if (!prod || !prod.name) return show({ state: "nodata", code });
 
   render(loadingView(code, 2), { busy: true });
-  const hits = match(prod);
-  const divergence = typeof findDivergence === "function"
-    ? findDivergence(prod.additiveTags, prod.ingredientsText) : [];
+  const v = computeVerdict(prod);
   if (t !== token) return;
-  const payload = { product: prod, code, hits, divergence };
+  show({ product: prod, code, hits: v.hits || { strong: [], possible: [], brand: [] }, divergence: v.divergence || [], state: v.state, tier: v.tier });
+}
 
+async function lookupByName(q, t) {
+  render(loadingView(q, 0), { busy: true });
+  try { await buildIndex(false); } catch (e) { recallIndex = recallIndex || { rows: [], fda: false, usda: false }; }
+  if (t !== token) return;
+  if (!recallIndex.fda && !recallIndex.usda) return show({ state: "offline", code: q, product: null, nameSearch: true });
+  render(loadingView(q, 2), { busy: true });
+  const prod = { name: q, brand: q.split(/\s+/).slice(0, 2).join(" "), categories: "", image: null, code: q, ingredientsText: "", additiveTags: [], ingredientSource: null };
+  const hits = match(prod);
+  if (t !== token) return;
+  const payload = { product: prod, code: q, hits, divergence: [], nameSearch: true };
   if (hits.strong.length)   return show({ ...payload, state: "recalled", tier: "strong" });
   if (hits.possible.length) return show({ ...payload, state: "recalled", tier: "possible" });
-  return show({ ...payload, state: "clear" });
+  show({ ...payload, state: "clear" });
 }
 
 const VERDICT_WORD = { recalled: "Recalled", possible: "Possible match", clear: "No recall found", nodata: "No data", offline: "Couldn't check" };
+const TIER_RANK = { none: 0, brand: 1, possible: 2, strong: 3 };
+
+function tierFor(item) {
+  const hits = match(item);
+  if (hits.strong.length) return "strong";
+  if (hits.possible.length) return "possible";
+  if (hits.brand.length) return "brand";
+  return "none";
+}
+
+/* Alerts: watch items whose live tier is a real recall match AND worse than
+   what the user last saw. Viewing the product acknowledges it. */
+function watchAlerts() {
+  if (!recallIndex) return [];
+  return watchlist
+    .map(w => ({ w, tier: tierFor(w) }))
+    .filter(x => TIER_RANK[x.tier] >= 2 && TIER_RANK[x.tier] > TIER_RANK[x.w.ack || "none"]);
+}
 
 function show(r) {
-  view = "result";
+  lastR = r;
   if (["recalled", "clear", "nodata"].includes(r.state)) {
     const nm = (r.product && r.product.name) || r.code;
     const st = r.state === "recalled" ? (r.tier === "strong" ? "recalled" : "possible") : r.state;
@@ -582,12 +811,18 @@ function show(r) {
       .concat(recent.filter(h => h && h.name !== nm))
       .slice(0, 8);
     store.set(HIST_KEY, recent);
+    // Viewing a watched product acknowledges its current recall tier.
+    if (codeVal) {
+      const w = watchlist.find(x => x.code === codeVal);
+      if (w) { w.ack = tierFor(w); saveWatch(); }
+    }
   }
   render(resultView(r));
   announce(`${VERDICT_WORD[r.state] || "Result"} for ${(r.product && r.product.name) || r.code}`);
 }
 
 const fmtDate = s => { s = String(s || ""); return s.length === 8 ? `${s.slice(4,6)}/${s.slice(6,8)}/${s.slice(0,4)}` : (s || "Not listed"); };
+const dateMs = s => { s = String(s || ""); if (s.length !== 8) return 0; return new Date(+s.slice(0,4), +s.slice(4,6) - 1, +s.slice(6,8)).getTime(); };
 
 function ago(ms) {
   const m = Math.round(ms / 6e4);
@@ -604,14 +839,22 @@ const ICONS = {
   x: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
   q: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 2-3 4"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
   arrow: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>`,
+  chev: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg>`,
   info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="11"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`,
   torch: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2z"/></svg>`,
   refresh: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>`,
-  ext: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`
+  ext: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`,
+  home: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`,
+  listi: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>`,
+  bookmark: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`,
+  sliders: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>`,
+  share: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`,
+  bell: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>`,
+  photo: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>`,
+  alert: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`
 };
 
 function verdictRing(kind) {
-  // kind: ok | bad | warn
   const color = kind === "ok" ? "var(--green)" : kind === "bad" ? "var(--red)" : "var(--amber)";
   const icon = kind === "ok" ? ICONS.check : kind === "bad" ? ICONS.x : ICONS.q;
   return `<div class="ring-wrap" aria-hidden="true"><div class="ring">
@@ -621,9 +864,7 @@ function verdictRing(kind) {
 }
 
 function brandMark() {
-  // Lettuce leaf with barcode-style veins and a verdict checkmark —
-  // the leaf shape carries the pun, the veins carry the scan cue,
-  // the checkmark carries the app's actual job.
+  // Lettuce leaf with barcode-style veins and a verdict checkmark.
   return `<svg class="brand-mark" viewBox="0 0 200 200" fill="none" aria-hidden="true" focusable="false">
     <path d="M100 20 C 108 26, 112 34, 110 42 C 120 34, 130 34, 136 42 C 140 52, 136 60, 128 64 C 140 62, 150 68, 152 78 C 154 90, 148 98, 138 100 C 150 102, 158 112, 158 124 C 158 136, 150 144, 140 144 C 148 152, 148 164, 140 172 C 132 180, 120 180, 114 172 C 112 182, 104 190, 100 190 C 96 190, 88 182, 86 172 C 80 180, 68 180, 60 172 C 52 164, 52 152, 60 144 C 50 144, 42 136, 42 124 C 42 112, 50 102, 62 100 C 52 98, 46 90, 48 78 C 50 68, 60 62, 72 64 C 64 60, 60 52, 64 42 C 70 34, 80 34, 90 42 C 88 34, 92 26, 100 20 Z" fill="#4ade80"/>
     <line x1="100" y1="46" x2="100" y2="168" stroke="#0d3320" stroke-width="4" stroke-linecap="round" opacity="0.35"/>
@@ -640,21 +881,22 @@ function brandMark() {
 }
 
 function iconSpan(svg, size) { return `<span style="width:${size || 16}px;height:${size || 16}px;display:inline-flex;flex-shrink:0">${svg}</span>`; }
-function backBar() { return `<button class="back" data-act="home">${iconSpan(ICONS.arrow)} Back</button>`; }
+function backBar() { return `<button class="back" data-act="back">${iconSpan(ICONS.arrow)} Back</button>`; }
 
-/* ---------- views ---------- */
+/* ---------- shared view pieces ---------- */
 function sourceTags(extra) {
   if (!recallIndex) {
     return `<div class="src"><span class="tag-skel"></span><span class="tag-skel"></span><span class="tag-skel"></span></div>`;
   }
   const age = recallIndex.at ? ago(Date.now() - recallIndex.at) : "just now";
   const both = recallIndex.fda && recallIndex.usda;
+  const n = recallIndex.rows.length;
   const tags = [
     `<span class="tag ${recallIndex.fda ? "up" : "down"}">FDA ${recallIndex.fda ? "loaded" : "unavailable"}</span>`,
     `<span class="tag ${recallIndex.usda ? "up" : "down"}">USDA ${recallIndex.usda ? "loaded" : "unavailable"}</span>`
   ];
   if (extra) tags.push(extra);
-  else tags.push(`<span class="tag">${recallIndex.rows.length} ${recallIndex.rows.length === 1 ? "recall" : "recalls"} &middot; ${age}</span>`);
+  else tags.push(`<span class="tag">${n} ${n === 1 ? "recall" : "recalls"} &middot; ${age}</span>`);
   tags.push(`<button class="linkish" data-act="refresh" title="Refresh recall data"
     aria-label="Refresh recall data">${iconSpan(ICONS.refresh, 14)}</button>`);
   const warn = both ? "" : `<p class="mini" style="text-align:center">${
@@ -665,22 +907,66 @@ function sourceTags(extra) {
   return `<div class="src">${tags.join("")}</div>${warn}`;
 }
 
+function tabbar(active) {
+  const items = [
+    ["/", "Home", ICONS.home],
+    ["/recalls", "Recalls", ICONS.listi],
+    ["/saved", "Saved", ICONS.bookmark],
+    ["/settings", "Settings", ICONS.sliders]
+  ];
+  return `<nav class="tabbar" aria-label="Main"><div class="tabbar-inner">${items.map(([path, label, ic]) =>
+    `<button class="${path === active ? "active" : ""}" data-act="nav" data-arg="${path}"
+      ${path === active ? 'aria-current="page"' : ""}>${ic}<span>${label}</span></button>`).join("")}
+  </div></nav><div class="tabspace"></div>`;
+}
+
+function pillFor(state) {
+  const cls = state === "recalled" ? "p-bad" : state === "possible" ? "p-warn" : state === "clear" ? "p-ok" : "p-warn";
+  const word = state === "recalled" ? "Recalled" : state === "possible" ? "Possible" : state === "clear" ? "Clear" : "No data";
+  return `<span class="pill ${cls}">${word}</span>`;
+}
+
+/* ---------- home ---------- */
+function alertsHtml() {
+  const alerts = watchAlerts().slice(0, 3);
+  if (!alerts.length) return `<div id="alerts"></div>`;
+  return `<div id="alerts">${alerts.map(({ w, tier }) => `
+    <button class="banner ${tier === "strong" ? "" : "warn"}" data-act="nav" data-arg="/product/${esc(w.code)}">
+      <span class="banner-ic">${ICONS.alert}</span>
+      <span><strong>${esc(w.name)}</strong> ${tier === "strong" ? "now matches a recall record" : "partly matches a new recall"} &mdash; tap to review.</span>
+      <span class="chev">${iconSpan(ICONS.chev, 16)}</span>
+    </button>`).join("")}</div>`;
+}
+
+function teaserHtml() {
+  if (!recallIndex) return `<div id="teaser"></div>`;
+  const wk = recallIndex.rows.filter(r => {
+    const t = dateMs(r.date);
+    return t && Date.now() - t <= 7 * 864e5;
+  }).length;
+  const num = wk || recallIndex.rows.length;
+  const line = wk
+    ? `${wk === 1 ? "New recall" : "New recalls"} in the last 7 days`
+    : `Recalls on file from the last ~13 months`;
+  return `<div id="teaser"><button class="teaser" data-act="nav" data-arg="/recalls" aria-label="Browse all recalls">
+    <span class="t-num">${num}</span>
+    <span>${line}<span class="t-sub">Browse the full list</span></span>
+    <span class="chev">${iconSpan(ICONS.chev, 16)}</span>
+  </button></div>`;
+}
+
 function homeView() {
-  const pill = x => x.state === "recalled" ? "p-bad" : x.state === "clear" ? "p-ok" : "p-warn";
-  const word = x => x.state === "recalled" ? "Recalled" : x.state === "possible" ? "Possible" : x.state === "clear" ? "Clear" : "No data";
   const h = recent.length ? `
-    <section style="margin-top:var(--s7)" aria-labelledby="recent-h">
-      <h2 id="recent-h" class="label" style="font-family:Inter,sans-serif">Recent scans</h2>
+    <section style="margin-top:var(--s6)" aria-labelledby="recent-h">
+      <h2 id="recent-h" class="label" style="font-family:Inter,sans-serif">Recent checks</h2>
       ${recent.map(x => x.code
         ? `<button class="hist" data-act="recheck" data-arg="${esc(x.code)}">
-             <span class="hist-name">${esc(x.name)}</span>
-             <span class="pill ${pill(x)}">${word(x)}</span>
+             <span class="hist-name">${esc(x.name)}</span>${pillFor(x.state)}
            </button>`
-        : `<div class="hist">
-             <span class="hist-name">${esc(x.name)}</span>
-             <span class="pill ${pill(x)}">${word(x)}</span>
-           </div>`).join("")}
-      ${recent.some(x => x.code) ? `<p class="mini">Tap a scan to check it again.</p>` : ""}
+        : `<button class="hist" data-act="nav" data-arg="/search/${encodeURIComponent(x.name)}">
+             <span class="hist-name">${esc(x.name)}</span>${pillFor(x.state)}
+           </button>`).join("")}
+      <p class="mini">Tap one to check it again.</p>
     </section>` : "";
   return `
     <div class="topbar"><div class="brand">${brandMark()}<span class="brand-name">Lettuce Know</span></div>
@@ -691,40 +977,63 @@ function homeView() {
     </div>
     <div style="padding-top:var(--s2)">
       <h1 tabindex="-1">We'll tell you.</h1>
-      <p class="sub">Scan any barcode for active FDA and USDA recalls, plus where US and EU food rules disagree.</p>
+      <p class="sub">Point the camera at any grocery barcode. We check it against live FDA and USDA recall notices &mdash; and flag ingredients the US and EU disagree on.</p>
     </div>
-    <div class="stack" style="margin-top:var(--s7)">
+    ${alertsHtml()}
+    <div class="stack" style="margin-top:var(--s6)">
       <button class="primary" data-act="scan">
         <span class="btn-inner">${iconSpan(ICONS.scan, 20)} Scan a barcode</span>
       </button>
-      <button class="ghost" data-act="manual">Enter the number instead</button>
+      <button class="ghost" data-act="manual">Type the number instead</button>
     </div>
     <div id="srcline">${sourceTags()}</div>
+    ${teaserHtml()}
     ${h}
-    <p class="foot">FDA covers most packaged food. USDA FSIS covers meat, poultry, and egg. Ingredient data comes from Open Food Facts and USDA FoodData Central — availability varies by product.</p>
-    <p class="made">Built by Jack with <span role="img" aria-label="orange heart">🧡</span></p>`;
+    <p class="foot">FDA covers most packaged food &middot; USDA covers meat, poultry &amp; egg.</p>
+    <p class="made">Built by Jack with <span role="img" aria-label="orange heart">🧡</span></p>
+    ${tabbar("/")}`;
+}
+
+/* ---------- scan ---------- */
+function batchBarHtml() {
+  if (!batchMode) return "";
+  const chips = batch.map(b => `
+    <div class="batch-item">
+      <span class="hist-name">${esc(b.name || b.code)}</span>
+      ${b.status === "checking" ? `<span class="spin" aria-label="Checking"></span>` : pillFor(b.state)}
+    </div>`).join("");
+  return `${batch.length ? `<div class="batch-list">${chips}</div>
+    <button class="primary" data-act="batch-done">Review ${batch.length} item${batch.length > 1 ? "s" : ""}</button>`
+    : `<p class="mini" style="text-align:center;margin-top:0">Scan several items in a row &mdash; each gets checked as you go.</p>`}`;
 }
 
 function scanView() {
   return `
     ${backBar()}
     <h1 class="sr-only" tabindex="-1">Scan a barcode</h1>
+    <div class="seg" style="margin-bottom:var(--s3)" role="group" aria-label="Scan mode">
+      <button class="${batchMode ? "" : "active"}" data-act="mode" data-arg="single">One item</button>
+      <button class="${batchMode ? "active" : ""}" data-act="mode" data-arg="batch">Pantry check</button>
+    </div>
     <div class="scan-frame">
       <div id="reader"><div class="cam-wait"><div class="spin"></div><span>Starting camera&hellip;</span></div></div>
       <div id="torchslot"></div>
     </div>
-    <p class="sub" style="text-align:center;margin-top:var(--s5)">Hold the barcode inside the frame.</p>
+    <p class="sub" style="text-align:center;margin-top:var(--s4)">Hold the barcode inside the frame.</p>
     <div id="scanerr" role="alert"></div>
-    <div class="stack" style="margin-top:var(--s5)">
-      <button class="ghost" data-act="manual">Enter the number instead</button>
+    <div id="batchbar" class="batchbar">${batchBarHtml()}</div>
+    <div class="stack" style="margin-top:var(--s4)">
+      <button class="ghost" data-act="photo"><span class="btn-inner">${iconSpan(ICONS.photo, 17)} Scan from a photo</span></button>
+      <button class="ghost" data-act="manual">Type the number instead</button>
     </div>`;
 }
 
+/* ---------- manual + name search ---------- */
 function manualView() {
   return `
     ${backBar()}
-    <h1 tabindex="-1">Enter barcode</h1>
-    <p class="sub" id="code-hint">The number printed under the barcode — usually 12 or 13 digits.</p>
+    <h1 tabindex="-1">Type the barcode</h1>
+    <p class="sub" id="code-hint">It's the number printed under the bars &mdash; usually 12 or 13 digits.</p>
     <form class="stack" style="margin-top:var(--s6)" data-act="submit-manual" novalidate>
       <div>
         <label class="sr-only" for="code">Barcode number</label>
@@ -734,13 +1043,14 @@ function manualView() {
       </div>
       <div id="manualerr" role="alert"></div>
       <button class="primary" type="submit">Check this barcode</button>
+      <button class="ghost" type="button" data-act="manual-name">Search recalls by name instead</button>
     </form>`;
 }
 
 function nameView() {
   return `
     ${backBar()}
-    <h1 tabindex="-1">Search recalls by name</h1>
+    <h1 tabindex="-1">Search by name</h1>
     <p class="sub" id="nm-hint">Type the brand and product as printed on the package.</p>
     <form class="stack" style="margin-top:var(--s6)" data-act="submit-name" novalidate>
       <div>
@@ -769,8 +1079,10 @@ function loadingView(code, stepIdx) {
   </div>`;
 }
 
+/* ---------- recall cards ---------- */
 function recallCard(h) {
   const c = h.rec;
+  const elsewhere = prefs.state && reachesState(c, prefs.state) === false;
   return `<div class="card" style="margin-top:var(--s4)">
     <div class="label">${esc(c.src)} recall ${esc(c.num || "")}</div>
     <div style="font-size:15px;line-height:1.5;font-weight:600">${esc(c.reason || "No reason listed")}</div>
@@ -781,6 +1093,7 @@ function recallCard(h) {
       <div class="row"><dt>Status</dt><dd>${esc(c.status || "Not listed")}</dd></div>
       ${c.states ? `<div class="row"><dt>Where</dt><dd>${esc(c.states)}</dd></div>` : ""}
     </dl>
+    ${elsewhere ? `<p class="mini">The distribution list doesn't mention ${esc(STATES[prefs.state])} &mdash; this one may not have reached you.</p>` : ""}
     ${c.desc ? `<div style="margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--line-soft)">
       <div class="label">Products covered</div>
       <div style="font-size:14px;line-height:1.6;color:var(--dim)">${esc(c.desc)}</div>
@@ -815,13 +1128,16 @@ function divergenceSection(divergence, ingredientSource) {
         <p class="mini">${esc(d.note)}</p>
         ${d.source ? `<p class="mini"><a class="src-link" href="${esc(d.source)}" target="_blank" rel="noopener noreferrer">Source ${iconSpan(ICONS.ext, 11)}</a></p>` : ""}
       </div>`).join("")}
-    <p class="mini" style="text-align:center">Regulatory facts, not a safety verdict — the EU and FDA weigh the same evidence differently. Ingredient data from ${esc(ingredientSource)}.</p>
+    <p class="mini" style="text-align:center">Regulatory facts, not a safety verdict &mdash; the EU and FDA weigh the same evidence differently. Ingredient data from ${esc(ingredientSource)}.</p>
   </section>`;
 }
 
+/* ---------- result ---------- */
 function resultView(r) {
   const p = r.product;
   const img = p && p.image;
+  const isCode = !r.nameSearch && /^\d{4,}$/.test(String(r.code || ""));
+  const watched = isCode && watchlist.some(w => w.code === r.code);
   const head = p ? `
     <div style="display:flex;gap:var(--s4);align-items:center;margin-bottom:var(--s2)">
       ${img ? `<img src="${esc(img)}" alt="" loading="lazy" decoding="async" width="52" height="52"
@@ -833,13 +1149,20 @@ function resultView(r) {
       </div>
     </div>` : `<h1 tabindex="-1" style="font-size:22px;margin-bottom:var(--s2)">Barcode ${esc(r.code)}</h1>`;
 
-  // Only one primary action per screen — the bottom CTA steps down to ghost
-  // whenever the body already owns the primary action.
+  const actRow = isCode && r.state !== "offline" ? `
+    <div class="act-row">
+      <button class="chip-act ${watched ? "on" : ""}" data-act="watch" data-arg="${esc(r.code)}" aria-pressed="${watched}">
+        ${ICONS.bell} ${watched ? "Watching" : "Watch for recalls"}
+      </button>
+      <button class="chip-act" data-act="share" data-arg="${esc(r.code)}">${ICONS.share} Share</button>
+    </div>` : "";
+
   let body = "";
   let bottomPrimary = true;
 
   if (r.state === "recalled") {
-    const list = r.tier === "strong" ? r.hits.strong : r.hits.possible;
+    let list = r.tier === "strong" ? r.hits.strong : r.hits.possible;
+    list = sortForState(list);
     const strong = r.tier === "strong";
     const top = list[0] && list[0].rec;
     const q = top ? `${String(top.firm || "").trim()} ${String(top.num || "").trim()}`.trim() : r.code;
@@ -851,6 +1174,7 @@ function resultView(r) {
           ? "This matches an active recall record. Check the lot code and date on your package before assuming it's affected."
           : "A recall partly matches this product. Compare the covered products below to your package — treat this as a prompt to check, not a confirmation."}</div>
       </div>
+      ${actRow}
       ${list.slice(0, 3).map(recallCard).join("")}
       <div class="card" style="margin-top:var(--s4)">
         <div class="label">What to do</div>
@@ -865,6 +1189,7 @@ function resultView(r) {
           <span class="btn-inner">Look up this recall notice ${iconSpan(ICONS.ext, 15)}</span>
         </button>
       </div>
+      ${r.nameSearch ? "" : flagsSection(p)}
       ${r.nameSearch ? "" : divergenceSection(r.divergence, p.ingredientSource)}
       ${brandHistoryCard(brandHistory(r.hits))}`;
   }
@@ -881,9 +1206,11 @@ function resultView(r) {
           ? "This looks like meat, poultry, or egg — regulated by the USDA — and that source didn't load. FDA data came back clean, but doesn't cover this kind of product. Treat this as unchecked."
           : "Nothing in the FDA or USDA recall data matches this product."}</div>
       </div>
+      ${actRow}
       ${sourceTags()}
+      ${r.nameSearch ? "" : flagsSection(p)}
       ${r.nameSearch ? "" : divergenceSection(r.divergence, p.ingredientSource)}
-      ${bh ? `${brandHistoryCard(bh)}${r.hits.brand.slice(0, 2).map(recallCard).join("")}`
+      ${bh ? `${brandHistoryCard(bh)}${sortForState(r.hits.brand).slice(0, 2).map(recallCard).join("")}`
         : r.hits.brand.length ? `<div class="card" style="margin-top:var(--s4)">
         <div class="label">Same brand, different product</div>
         <p class="mini" style="margin-top:0">One recall from this brand in the last year. Not your product, but worth knowing.</p>
@@ -932,39 +1259,175 @@ function resultView(r) {
       <button class="${bottomPrimary ? "primary" : "ghost"}" data-act="scan">
         <span class="btn-inner">${iconSpan(ICONS.scan, 18)} Scan another</span>
       </button>
-    </div>`;
+    </div>
+    <p class="mini" style="text-align:center"><a class="src-link" href="${FEEDBACK}">Wrong result? Tell me</a></p>`;
 }
 
-async function runNameSearch(_arg, form) {
-  const input = document.getElementById("nm");
-  const box = document.getElementById("nmerr");
-  const v = ((input && input.value) || "").trim();
-  if (v.length < 3) {
-    if (box) box.innerHTML = `<div class="err">Type at least 3 characters — a brand or product name works best.</div>`;
-    if (input) { input.setAttribute("aria-invalid", "true"); input.focus(); }
-    return;
+/* ---------- recalls browser ---------- */
+function filteredRecalls() {
+  let rows = (recallIndex && recallIndex.rows) || [];
+  if (recallsFilter !== "all") rows = rows.filter(r => r.src === recallsFilter);
+  const q = recallsQuery.trim().toLowerCase();
+  if (q) rows = rows.filter(r => (r._f || "").includes(q) || (r._p || "").includes(q) || String(r.reason || "").toLowerCase().includes(q));
+  return [...rows].sort((a, b) => String(b.date).localeCompare(String(a.date)));
+}
+
+function clsBadge(cls) {
+  const c = String(cls || "");
+  if (/class i\b|^i$|high/i.test(c) && !/class ii/i.test(c)) return `<span class="pill p-bad">Class I</span>`;
+  if (/class ii\b|^ii$/i.test(c) && !/class iii/i.test(c)) return `<span class="pill p-warn">Class II</span>`;
+  if (/class iii|^iii$|low/i.test(c)) return `<span class="pill p-dim">Class III</span>`;
+  return "";
+}
+
+function recallListHtml() {
+  const rows = filteredRecalls();
+  const shown = rows.slice(0, recallsShown);
+  if (!recallIndex) return `<p class="mini" style="text-align:center">Loading recall data&hellip;</p>`;
+  if (!rows.length) {
+    return `<div class="empty"><div class="e-ic">${ICONS.listi}</div>
+      <h2>Nothing matches</h2><p>${recallsQuery ? "No recalls match that search. Try fewer words." : "No recalls loaded from this source right now."}</p></div>`;
   }
-  if (input) input.removeAttribute("aria-invalid");
-  if (box) box.innerHTML = "";
-  const btn = form && form.querySelector("button[type=submit]");
-  if (btn) btn.classList.add("is-loading");
+  return `
+    <p class="mini" style="margin:var(--s3) 0 var(--s1)">${rows.length} recall${rows.length > 1 ? "s" : ""}, newest first.</p>
+    ${shown.map(r => `<details class="recd"><summary>
+      <span class="recd-top"><span class="pill p-dim">${esc(r.src)}</span>
+        <span class="recd-date">${fmtDate(r.date)}</span>${clsBadge(r.cls)}</span>
+      <span class="recd-firm">${esc(r.firm || "Unnamed firm")}</span>
+      <span class="recd-why">${esc(String(r.reason || r.desc || "").slice(0, 110))}</span>
+    </summary><div class="recd-body">${recallCard({ rec: r })}</div></details>`).join("")}
+    ${rows.length > recallsShown ? `<div class="stack" style="margin-top:var(--s4)">
+      <button class="ghost" data-act="rmore">Show ${Math.min(25, rows.length - recallsShown)} more</button></div>` : ""}`;
+}
 
-  const t = ++token;
-  view = "loading";
-  render(loadingView(v, 0), { busy: true });
-  try { await buildIndex(false); } catch (e) { recallIndex = recallIndex || { rows: [], fda: false, usda: false }; }
-  if (t !== token) return;
+function recallsView() {
+  return `
+    <div class="topbar"><div class="brand">${brandMark()}<span class="brand-name">Lettuce Know</span></div></div>
+    <h1 tabindex="-1">Recent recalls</h1>
+    <p class="sub">Every FDA and USDA recall in the current index &mdash; the same records your scans are checked against.</p>
+    <div class="seg" style="margin-top:var(--s5)" role="group" aria-label="Filter by source">
+      <button class="${recallsFilter === "all" ? "active" : ""}" data-act="rfilter" data-arg="all">All</button>
+      <button class="${recallsFilter === "FDA" ? "active" : ""}" data-act="rfilter" data-arg="FDA">FDA</button>
+      <button class="${recallsFilter === "USDA" ? "active" : ""}" data-act="rfilter" data-arg="USDA">USDA</button>
+    </div>
+    <div style="margin-top:var(--s3)">
+      <label class="sr-only" for="recq">Search recalls</label>
+      <input id="recq" type="search" placeholder="Search by brand, product, or reason" autocomplete="off" value="${esc(recallsQuery)}">
+    </div>
+    <div id="reclist">${recallListHtml()}</div>
+    ${tabbar("/recalls")}`;
+}
 
-  if (!recallIndex.fda && !recallIndex.usda) return show({ state: "offline", code: v, product: null, nameSearch: true });
+/* ---------- saved / watchlist ---------- */
+function savedView() {
+  const body = watchlist.length ? `
+    ${watchlist.map(w => {
+      const tier = recallIndex ? tierFor(w) : null;
+      const pill = tier === null ? `<span class="pill p-dim">&hellip;</span>`
+        : tier === "strong" ? `<span class="pill p-bad">Recalled</span>`
+        : tier === "possible" ? `<span class="pill p-warn">Possible</span>`
+        : `<span class="pill p-ok">No match</span>`;
+      return `<div class="saved-row">
+        <button class="hist" data-act="nav" data-arg="/product/${esc(w.code)}">
+          <span style="min-width:0"><span class="hist-name">${esc(w.name)}</span>
+            <span class="hist-sub">Watching since ${new Date(w.addedAt || Date.now()).toLocaleDateString()}</span></span>
+          ${pill}
+        </button>
+        <button class="icon-btn" data-act="unwatch" data-arg="${esc(w.code)}" aria-label="Stop watching ${esc(w.name)}">${iconSpan(ICONS.x, 16)}</button>
+      </div>`;
+    }).join("")}
+    <p class="mini">Watched products are re-checked against fresh recall data every time it refreshes (about twice a day when you open the app). A match shows up here and as a banner on Home.</p>`
+    : `<div class="empty">
+      <div class="e-ic">${ICONS.bell}</div>
+      <h2>Nothing watched yet</h2>
+      <p>Scan a product and tap &ldquo;Watch for recalls&rdquo; on its result. If a recall ever matches it, you'll see it here and on Home.</p>
+      <div class="stack" style="margin-top:var(--s5)">
+        <button class="primary" data-act="scan"><span class="btn-inner">${iconSpan(ICONS.scan, 18)} Scan a barcode</span></button>
+      </div>
+    </div>`;
+  return `
+    <div class="topbar"><div class="brand">${brandMark()}<span class="brand-name">Lettuce Know</span></div></div>
+    <h1 tabindex="-1">Saved</h1>
+    <p class="sub">Products you're watching for future recalls.</p>
+    <div style="margin-top:var(--s5)">${body}</div>
+    ${tabbar("/saved")}`;
+}
 
-  render(loadingView(v, 2), { busy: true });
-  const prod = { name: v, brand: v.split(/\s+/).slice(0, 2).join(" "), categories: "", image: null, code: v, ingredientsText: "", additiveTags: [], ingredientSource: null };
-  const hits = match(prod);
-  if (t !== token) return;
-  const payload = { product: prod, code: v, hits, divergence: [], nameSearch: true };
-  if (hits.strong.length)   return show({ ...payload, state: "recalled", tier: "strong" });
-  if (hits.possible.length) return show({ ...payload, state: "recalled", tier: "possible" });
-  show({ ...payload, state: "clear" });
+/* ---------- settings ---------- */
+function settingsView() {
+  const stateOpts = `<option value="">Anywhere / not set</option>` + Object.entries(STATES)
+    .map(([ab, name]) => `<option value="${ab}" ${prefs.state === ab ? "selected" : ""}>${name}</option>`).join("");
+  return `
+    <div class="topbar"><div class="brand">${brandMark()}<span class="brand-name">Lettuce Know</span></div>
+      <div class="topbar-actions">
+        <button class="icon-btn" data-act="about" aria-label="About Lettuce Know">${iconSpan(ICONS.info, 20)}</button>
+      </div>
+    </div>
+    <h1 tabindex="-1">Settings</h1>
+    <p class="sub">Everything here stays on this device &mdash; nothing is uploaded anywhere.</p>
+
+    <section class="card" style="margin-top:var(--s5)" aria-labelledby="set-flag-h">
+      <h2 id="set-flag-h" class="label" style="font-family:Inter,sans-serif">Ingredients you avoid</h2>
+      <p class="mini" style="margin-top:0;margin-bottom:var(--s4)">Results get a red flag when a product's ingredient list mentions any of these.</p>
+      <div class="chips" id="allergen-chips">${ALLERGENS.map(a =>
+        `<button class="chip-toggle ${prefs.allergens.includes(a.id) ? "on" : ""}" data-act="allergen" data-arg="${a.id}"
+          aria-pressed="${prefs.allergens.includes(a.id)}">${esc(a.name)}</button>`).join("")}
+      </div>
+      <form data-act="avoid-add" style="display:flex;gap:var(--s2);margin-top:var(--s4)" novalidate>
+        <label class="sr-only" for="avin">Add an ingredient to avoid</label>
+        <input id="avin" type="text" maxlength="40" placeholder="Anything else, e.g. red 40" style="flex:1;min-width:0">
+        <button class="ghost" type="submit" style="width:auto;padding:0 var(--s5)">Add</button>
+      </form>
+      <div class="chips" id="avlist" style="margin-top:${prefs.avoid.length ? "var(--s3)" : "0"}">${prefs.avoid.map(t =>
+        `<button class="chip-x" data-act="avoid-remove" data-arg="${esc(t)}" aria-label="Remove ${esc(t)}">${esc(t)} ${ICONS.x}</button>`).join("")}
+      </div>
+      <p class="mini">Checks the label text in the product databases. &ldquo;May contain&rdquo; warnings often aren't in that data &mdash; always read the package if you have an allergy.</p>
+    </section>
+
+    <section class="card" style="margin-top:var(--s4)" aria-labelledby="set-state-h">
+      <h2 id="set-state-h" class="label" style="font-family:Inter,sans-serif">Your state</h2>
+      <p class="mini" style="margin-top:0;margin-bottom:var(--s4)">Recalls whose distribution list doesn't mention your state get a &ldquo;may not have reached you&rdquo; note and sort lower. Nothing is hidden.</p>
+      <label class="sr-only" for="stsel">Your state</label>
+      <select id="stsel">${stateOpts}</select>
+    </section>
+
+    <section class="card" style="margin-top:var(--s4)" aria-labelledby="set-data-h">
+      <h2 id="set-data-h" class="label" style="font-family:Inter,sans-serif">Data</h2>
+      <div id="srcline">${sourceTags()}</div>
+      <div class="stack" style="margin-top:var(--s4)">
+        <button class="ghost" data-act="refresh"><span class="btn-inner">${iconSpan(ICONS.refresh, 16)} Refresh recall data</span></button>
+        <button class="ghost" data-act="clear-recent">Clear recent checks</button>
+      </div>
+    </section>
+
+    <p class="foot">Matching is fuzzy by design &mdash; <a class="src-link" href="${FEEDBACK}">report a wrong result</a> and it helps make it better.</p>
+    <p class="made">Built by Jack with <span role="img" aria-label="orange heart">🧡</span></p>
+    ${tabbar("/settings")}`;
+}
+
+/* ---------- batch summary ---------- */
+function batchSummaryView() {
+  const done = batch.filter(b => b.status !== "checking");
+  const bad = done.filter(b => b.state === "recalled").length;
+  const warn = done.filter(b => b.state === "possible" || b.state === "nodata").length;
+  const ok = done.filter(b => b.state === "clear").length;
+  return `
+    ${backBar()}
+    <h1 tabindex="-1">Pantry check</h1>
+    <p class="sub">${batch.length} item${batch.length > 1 ? "s" : ""} scanned. Tap any of them for the full result.</p>
+    <div class="stat-row">
+      <div class="stat bad"><div class="n">${bad}</div><div class="k">Recalled</div></div>
+      <div class="stat warn"><div class="n">${warn}</div><div class="k">Check</div></div>
+      <div class="stat ok"><div class="n">${ok}</div><div class="k">Clear</div></div>
+    </div>
+    ${batch.map(b => `<button class="hist" data-act="nav" data-arg="/product/${esc(b.code)}">
+      <span class="hist-name">${esc(b.name || b.code)}</span>
+      ${b.status === "checking" ? `<span class="spin" aria-label="Checking"></span>` : pillFor(b.state)}
+    </button>`).join("")}
+    <div class="stack" style="margin-top:var(--s6)">
+      <button class="primary" data-act="scan"><span class="btn-inner">${iconSpan(ICONS.scan, 18)} Keep scanning</span></button>
+      <button class="ghost" data-act="batch-clear">Start a new check</button>
+    </div>`;
 }
 
 /* ---------- render, focus & announcements ---------- */
@@ -972,8 +1435,6 @@ function render(html, opts) {
   app.innerHTML = html;
   app.setAttribute("aria-busy", opts && opts.busy ? "true" : "false");
   window.scrollTo(0, 0);
-  // Move focus to the new screen's heading so keyboard and screen-reader
-  // users land in the right place instead of at the top of <body>.
   const h = app.querySelector("h1");
   if (h) { try { h.focus({ preventScroll: true }); } catch (e) { h.focus(); } }
 }
@@ -1007,63 +1468,118 @@ function hideToast() {
   toastTimer = setTimeout(() => { el.hidden = true; }, 300);
 }
 
-/* ---------- nav & history ---------- */
-function enterSub() {
-  if (pushed) return;
-  try { window.history.pushState({ lk: 1 }, ""); pushed = true; } catch (e) {}
+/* ---------- about dialog ---------- */
+function openAbout() {
+  const d = document.getElementById("about");
+  if (!d) return;
+  if (typeof d.showModal === "function") { if (!d.open) d.showModal(); }
+  else d.setAttribute("open", "");
+}
+function closeAbout() {
+  const d = document.getElementById("about");
+  if (!d) return;
+  if (typeof d.close === "function") { if (d.open) d.close(); }
+  else d.removeAttribute("open");
 }
 
-async function stopScanner() {
-  if (!scanner) return;
-  const s = scanner;
-  scanner = null;
-  try { await s.stop(); } catch (e) {}
-  try { s.clear(); } catch (e) {}
+/* ============================================================
+   ROUTER — hash-based, so results are shareable URLs.
+   ============================================================ */
+function parseHash() {
+  const h = (location.hash || "#/").replace(/^#/, "");
+  return h.startsWith("/") ? h : "/" + h;
+}
+function navigate(path) {
+  const target = "#" + path;
+  if (location.hash === target) route();
+  else location.hash = target;
+}
+function goBack() {
+  if (history.length > 1) history.back();
+  else navigate("/");
 }
 
-async function goHome() {
-  ++token;
-  await stopScanner();
-  // If we pushed an entry, unwind it so the browser's Back button and the
-  // in-app Back button agree about where "back" goes.
-  if (pushed) { pushed = false; try { window.history.back(); return; } catch (e) {} }
-  view = "home";
-  render(homeView());
-}
+const renderHome = () => { render(homeView()); };
 
-function renderHomeNow() {
-  view = "home";
-  pushed = false;
-  render(homeView());
-}
-
-window.addEventListener("popstate", () => {
-  ++token;
-  pushed = false;
+async function route() {
+  const t = ++token;
   closeAbout();
-  stopScanner();
-  if (view !== "home") renderHomeNow();
-});
-
-async function goManual() {
-  ++token;
   await stopScanner();
-  view = "manual";
-  enterSub();
-  render(manualView());
-  const e = document.getElementById("code");
-  if (e) e.focus();
+  if (t !== token) return;
+  const path = parseHash();
+  const seg = path.split("/").filter(Boolean);
+  if (!seg.length) return renderHome();
+  switch (seg[0]) {
+    case "scan": {
+      render(scanView());
+      startCamera(t);
+      return;
+    }
+    case "enter": {
+      render(manualView());
+      const e = document.getElementById("code");
+      if (e) e.focus();
+      return;
+    }
+    case "name": {
+      render(nameView());
+      const e = document.getElementById("nm");
+      if (e) e.focus();
+      return;
+    }
+    case "recalls": {
+      recallsShown = 25;
+      // Make sure the browser has data even if the user deep-links here.
+      if (!recallIndex) {
+        render(recallsView(), { busy: true });
+        try { await buildIndex(false); } catch (e) {}
+        if (t !== token) return;
+      }
+      return render(recallsView());
+    }
+    case "saved": {
+      if (!recallIndex) {
+        render(savedView(), { busy: true });
+        try { await buildIndex(false); } catch (e) {}
+        if (t !== token) return;
+      }
+      return render(savedView());
+    }
+    case "settings": {
+      if (!recallIndex) {
+        render(settingsView(), { busy: true });
+        try { await buildIndex(false); } catch (e) {}
+        if (t !== token) return;
+      }
+      return render(settingsView());
+    }
+    case "batch": {
+      if (!batch.length) return navigate("/scan");
+      return render(batchSummaryView());
+    }
+    case "product": {
+      const code = String(seg[1] || "").replace(/\D/g, "");
+      if (!code) return renderHome();
+      return lookup(code, t);
+    }
+    case "search": {
+      let q = "";
+      try { q = decodeURIComponent(seg.slice(1).join("/") || ""); } catch (e) {}
+      if (q.trim().length < 3) return navigate("/name");
+      return lookupByName(q.trim(), t);
+    }
+    default: return renderHome();
+  }
 }
+window.addEventListener("hashchange", route);
 
-function goManualName() {
-  ++token;
-  view = "name";
-  enterSub();
-  render(nameView());
-  const e = document.getElementById("nm");
-  if (e) e.focus();
-}
+/* Legacy names kept for muscle memory (and external callers). */
+const goHome = () => navigate("/");
+const goScan = () => navigate("/scan");
+const goManual = () => navigate("/enter");
+const goManualName = () => navigate("/name");
 
+/* ---------- forms ---------- */
 function submitManual(_arg, form) {
   const input = document.getElementById("code");
   const box = document.getElementById("manualerr");
@@ -1080,9 +1596,71 @@ function submitManual(_arg, form) {
   }
   if (input) input.removeAttribute("aria-invalid");
   if (box) box.innerHTML = "";
-  const btn = form && form.querySelector("button[type=submit]");
-  if (btn) btn.classList.add("is-loading");
-  lookup(v);
+  navigate("/product/" + v);
+}
+
+function runNameSearch(_arg, form) {
+  const input = document.getElementById("nm");
+  const box = document.getElementById("nmerr");
+  const v = ((input && input.value) || "").trim();
+  if (v.length < 3) {
+    if (box) box.innerHTML = `<div class="err">Type at least 3 characters — a brand or product name works best.</div>`;
+    if (input) { input.setAttribute("aria-invalid", "true"); input.focus(); }
+    return;
+  }
+  if (input) input.removeAttribute("aria-invalid");
+  if (box) box.innerHTML = "";
+  navigate("/search/" + encodeURIComponent(v));
+}
+
+/* ---------- watch & share ---------- */
+function toggleWatch(code) {
+  const i = watchlist.findIndex(w => w.code === code);
+  if (i >= 0) {
+    watchlist.splice(i, 1);
+    saveWatch();
+    toast("Removed from your watchlist");
+  } else {
+    const p = lastR && lastR.product;
+    if (!p) return;
+    watchlist.unshift({
+      code, name: p.name || code, brand: p.brand || "", categories: p.categories || "",
+      addedAt: Date.now(),
+      // Acknowledge whatever the user can already see, so only NEW matches alert.
+      ack: recallIndex ? tierFor({ name: p.name, brand: p.brand }) : "none"
+    });
+    watchlist = watchlist.slice(0, 20);
+    saveWatch();
+    toast("Watching — you'll see an alert on Home if a recall ever matches");
+  }
+  if (lastR) render(resultView(lastR));
+}
+
+function unwatch(code) {
+  watchlist = watchlist.filter(w => w.code !== code);
+  saveWatch();
+  render(savedView());
+  toast("Removed from your watchlist");
+}
+
+async function shareResult(code) {
+  const url = location.origin + location.pathname + "#/product/" + code;
+  const name = (lastR && lastR.product && lastR.product.name) || "this product";
+  if (navigator.share) {
+    try { await navigator.share({ title: "Lettuce Know", text: `Recall check for ${name}`, url }); return; }
+    catch (e) { if (e && e.name === "AbortError") return; }
+  }
+  try { await navigator.clipboard.writeText(url); toast("Link copied"); }
+  catch (e) { toast(url); }
+}
+
+/* ---------- scanner ---------- */
+async function stopScanner() {
+  if (!scanner) return;
+  const s = scanner;
+  scanner = null;
+  try { await s.stop(); } catch (e) {}
+  try { s.clear(); } catch (e) {}
 }
 
 function loadScannerLib() {
@@ -1101,21 +1679,25 @@ function loadScannerLib() {
 
 function cameraMessage(err) {
   const name = (err && err.name) || String(err || "");
-  if (!window.isSecureContext) return "The camera needs a secure https:// address. Open the deployed site, or use manual entry below.";
-  if (/ScannerUnavailable/.test(name)) return "Couldn't load the scanner. Check your connection, or use manual entry below.";
+  if (!window.isSecureContext) return "The camera needs a secure https:// address. Open the deployed site, or type the number below.";
+  if (/ScannerUnavailable/.test(name)) return "Couldn't load the scanner. Check your connection, or type the number below.";
   if (/NotAllowedError|Permission/i.test(name)) return "Camera access was blocked. Allow the camera for this site in your browser settings, then tap Scan again.";
-  if (/NotFoundError|OverconstrainedError|DevicesNotFound/i.test(name)) return "No usable camera found on this device. Use manual entry below.";
+  if (/NotFoundError|OverconstrainedError|DevicesNotFound/i.test(name)) return "No usable camera found on this device. Type the number below instead.";
   if (/NotReadableError|TrackStartError/i.test(name)) return "Another app is using the camera. Close it, then tap Scan again.";
-  return "Couldn't start the camera. Use manual entry below.";
+  return "Couldn't start the camera. Type the number below instead.";
 }
 
-async function goScan() {
-  const t = ++token;
-  await stopScanner();
-  view = "scan";
-  enterSub();
-  render(scanView());
+/* Every successful decode funnels through here — single mode navigates,
+   pantry mode queues. */
+function onScanDecode(text) {
+  const code = String(text).replace(/\D/g, "");
+  if (!code) return;
+  if (navigator.vibrate) { try { navigator.vibrate(30); } catch (e) {} }
+  if (batchMode) addToBatch(code);
+  else navigate("/product/" + code);
+}
 
+async function startCamera(t) {
   const fail = e => {
     if (t !== token) return;
     const box = document.getElementById("scanerr");
@@ -1123,7 +1705,6 @@ async function goScan() {
     if (reader) reader.innerHTML = `<div class="cam-wait">Camera unavailable</div>`;
     if (box) box.innerHTML = `<div class="err" style="margin-top:var(--s4)">${esc(cameraMessage(e))}</div>`;
   };
-
   try {
     await loadScannerLib();
     if (t !== token) return;
@@ -1136,12 +1717,7 @@ async function goScan() {
     await inst.start(
       { facingMode: "environment" },
       { fps: 10, qrbox: { width: 260, height: 160 }, aspectRatio: 1.4 },
-      text => {
-        const code = String(text).replace(/\D/g, "");
-        if (!code || t !== token) return;
-        if (navigator.vibrate) { try { navigator.vibrate(30); } catch (e) {} }
-        lookup(code);
-      },
+      text => { if (t === token) onScanDecode(text); },
       () => {}
     );
     if (t !== token) { await stopScanner(); return; }
@@ -1152,8 +1728,7 @@ async function goScan() {
   }
 }
 
-/* Torch is offered only when the running track actually reports the
- * capability — support is patchy across browsers and cameras. */
+/* Torch offered only when the running track reports the capability. */
 let torchOn = false;
 async function mountTorch(inst) {
   torchOn = false;
@@ -1178,6 +1753,73 @@ async function toggleTorch(_arg, el) {
   }
 }
 
+/* ---------- batch (pantry check) ---------- */
+function patchBatchBar() {
+  const el = document.getElementById("batchbar");
+  if (el) el.innerHTML = batchBarHtml();
+}
+
+function addToBatch(code) {
+  if (batch.some(b => b.code === code)) return;
+  const entry = { code, status: "checking", name: "", state: null };
+  batch.push(entry);
+  patchBatchBar();
+  batchCheck(entry);
+}
+
+async function batchCheck(entry) {
+  try {
+    try { await buildIndex(false); } catch (e) { recallIndex = recallIndex || { rows: [], fda: false, usda: false }; }
+    const prod = await fetchProduct(entry.code);
+    const v = computeVerdict(prod);
+    entry.name = (prod && prod.name) || entry.code;
+    entry.state = v.state === "recalled" ? (v.tier === "strong" ? "recalled" : "possible") : v.state;
+  } catch (e) {
+    entry.state = "nodata";
+  }
+  entry.status = "done";
+  patchBatchBar();
+  if (parseHash() === "/batch") render(batchSummaryView());
+}
+
+function setScanMode(arg) {
+  batchMode = arg === "batch";
+  const segEl = app.querySelector(".seg");
+  if (segEl) {
+    const [a, b] = segEl.querySelectorAll("button");
+    if (a && b) { a.classList.toggle("active", !batchMode); b.classList.toggle("active", batchMode); }
+  }
+  patchBatchBar();
+}
+
+/* ---------- scan from photo ---------- */
+async function scanFromPhoto(file) {
+  const t = token;
+  const err = document.getElementById("scanerr");
+  if (err) err.innerHTML = "";
+  try {
+    await loadScannerLib();
+    await stopScanner();
+    if (t !== token) return;
+    const reader = document.getElementById("reader");
+    if (reader) reader.innerHTML = `<div class="cam-wait"><div class="spin"></div><span>Reading photo&hellip;</span></div>`;
+    const inst = new window.Html5Qrcode("reader", { verbose: false });
+    let text = "";
+    try { text = await inst.scanFile(file, false); }
+    finally { try { inst.clear(); } catch (e) {} }
+    const code = String(text || "").replace(/\D/g, "");
+    if (!code) throw new Error("no-code");
+    if (t !== token) return;
+    if (batchMode) { addToBatch(code); startCamera(t); }
+    else navigate("/product/" + code);
+  } catch (e) {
+    if (t !== token) return;
+    if (err) err.innerHTML = `<div class="err" style="margin-top:var(--s4)">Couldn't find a barcode in that photo. Try a closer, sharper shot — or type the number below.</div>`;
+    startCamera(t);
+  }
+}
+
+/* ---------- misc actions ---------- */
 async function refreshData(_arg, el) {
   if (el) el.classList.add("is-loading");
   try {
@@ -1189,20 +1831,8 @@ async function refreshData(_arg, el) {
   const line = document.getElementById("srcline");
   if (line) line.innerHTML = sourceTags();
   else if (el) el.classList.remove("is-loading");
-}
-
-function openAbout() {
-  const d = document.getElementById("about");
-  if (!d) return;
-  // showModal gives focus trapping, Esc-to-close and inertness for free.
-  if (typeof d.showModal === "function") { if (!d.open) d.showModal(); }
-  else d.setAttribute("open", "");
-}
-function closeAbout() {
-  const d = document.getElementById("about");
-  if (!d) return;
-  if (typeof d.close === "function") { if (d.open) d.close(); }
-  else d.removeAttribute("open");
+  const list = document.getElementById("reclist");
+  if (list) list.innerHTML = recallListHtml();
 }
 
 function openSearch(q) {
@@ -1215,16 +1845,85 @@ async function doInstall() {
   const p = installPrompt;
   installPrompt = null;
   try { await p.prompt(); } catch (e) {}
-  if (view === "home") render(homeView());
+  if (parseHash() === "/") renderHome();
 }
 
-/* ---------- event delegation: no inline handlers, so no HTML-in-JS quoting bugs ---------- */
+function toggleAllergen(id, el) {
+  const i = prefs.allergens.indexOf(id);
+  if (i >= 0) prefs.allergens.splice(i, 1);
+  else prefs.allergens.push(id);
+  savePrefs();
+  if (el) {
+    const on = prefs.allergens.includes(id);
+    el.classList.toggle("on", on);
+    el.setAttribute("aria-pressed", String(on));
+  }
+}
+
+function avoidAdd(_arg, form) {
+  const input = document.getElementById("avin");
+  const v = ((input && input.value) || "").trim();
+  if (v.length < 2) { toast("Type at least 2 characters"); return; }
+  if (prefs.avoid.some(t => t.toLowerCase() === v.toLowerCase())) { toast("Already on your list"); if (input) input.value = ""; return; }
+  prefs.avoid.unshift(v);
+  prefs.avoid = prefs.avoid.slice(0, 20);
+  savePrefs();
+  if (input) input.value = "";
+  const el = document.getElementById("avlist");
+  if (el) {
+    el.style.marginTop = "var(--s3)";
+    el.innerHTML = prefs.avoid.map(t =>
+      `<button class="chip-x" data-act="avoid-remove" data-arg="${esc(t)}" aria-label="Remove ${esc(t)}">${esc(t)} ${ICONS.x}</button>`).join("");
+  }
+}
+
+function avoidRemove(term) {
+  prefs.avoid = prefs.avoid.filter(t => t !== term);
+  savePrefs();
+  const el = document.getElementById("avlist");
+  if (el) el.innerHTML = prefs.avoid.map(t =>
+    `<button class="chip-x" data-act="avoid-remove" data-arg="${esc(t)}" aria-label="Remove ${esc(t)}">${esc(t)} ${ICONS.x}</button>`).join("");
+}
+
+function clearRecent() {
+  recent = [];
+  store.set(HIST_KEY, recent);
+  toast("Recent checks cleared");
+}
+
+/* ---------- event delegation ---------- */
 const ACTIONS = {
+  nav: p => navigate(p),
+  back: goBack,
   home: goHome, scan: goScan, manual: goManual, "manual-name": goManualName,
   "submit-manual": submitManual, "submit-name": runNameSearch,
-  recheck: code => lookup(code), search: q => openSearch(q),
+  recheck: code => navigate("/product/" + code),
+  search: q => openSearch(q),
   refresh: refreshData, install: doInstall,
-  about: openAbout, "about-close": closeAbout, torch: toggleTorch
+  about: openAbout, "about-close": closeAbout, torch: toggleTorch,
+  watch: code => toggleWatch(code),
+  unwatch: code => unwatch(code),
+  share: code => shareResult(code),
+  mode: setScanMode,
+  "batch-done": () => navigate("/batch"),
+  "batch-clear": () => { batch = []; navigate("/scan"); },
+  photo: () => { const f = document.getElementById("photoin"); if (f) { f.value = ""; f.click(); } },
+  rfilter: arg => {
+    recallsFilter = arg; recallsShown = 25;
+    const seg = app.querySelector('.seg[aria-label="Filter by source"]');
+    if (seg) seg.querySelectorAll("button").forEach(b => b.classList.toggle("active", b.dataset.arg === arg));
+    const list = document.getElementById("reclist");
+    if (list) list.innerHTML = recallListHtml();
+  },
+  rmore: () => {
+    recallsShown += 25;
+    const list = document.getElementById("reclist");
+    if (list) list.innerHTML = recallListHtml();
+  },
+  allergen: (id, el) => toggleAllergen(id, el),
+  "avoid-add": avoidAdd,
+  "avoid-remove": term => avoidRemove(term),
+  "clear-recent": clearRecent
 };
 
 document.addEventListener("click", e => {
@@ -1250,23 +1949,46 @@ document.addEventListener("click", e => {
   if (d && d.open && e.target === d) closeAbout();
 });
 
-// Clear a validation error as soon as the user starts correcting it.
+// Clear a validation error as soon as the user starts correcting it;
+// live-filter the recall browser.
 document.addEventListener("input", e => {
   const el = e.target;
-  if (el.id !== "code" && el.id !== "nm") return;
-  el.removeAttribute("aria-invalid");
-  const box = document.getElementById(el.id === "code" ? "manualerr" : "nmerr");
-  if (box) box.innerHTML = "";
+  if (el.id === "code" || el.id === "nm") {
+    el.removeAttribute("aria-invalid");
+    const box = document.getElementById(el.id === "code" ? "manualerr" : "nmerr");
+    if (box) box.innerHTML = "";
+    return;
+  }
+  if (el.id === "recq") {
+    recallsQuery = el.value || "";
+    recallsShown = 25;
+    const list = document.getElementById("reclist");
+    if (list) list.innerHTML = recallListHtml();
+  }
 });
 
-// Don't hold the camera open in a backgrounded tab.
-document.addEventListener("visibilitychange", () => { if (document.hidden) stopScanner(); });
+document.addEventListener("change", e => {
+  const el = e.target;
+  if (el.id === "stsel") {
+    prefs.state = STATES[el.value] ? el.value : "";
+    savePrefs();
+    toast(prefs.state ? `Recalls will be checked against ${STATES[prefs.state]}` : "State cleared");
+  }
+  if (el.id === "photoin" && el.files && el.files[0]) scanFromPhoto(el.files[0]);
+});
+
+// Don't hold the camera open in a backgrounded tab — and bring it back
+// when the user returns to the scan screen.
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) { stopScanner(); return; }
+  if (parseHash() === "/scan" && !scanner) startCamera(token);
+});
 window.addEventListener("pagehide", () => { stopScanner(); });
 
 window.addEventListener("beforeinstallprompt", e => {
   e.preventDefault();
   installPrompt = e;
-  if (view === "home") render(homeView());
+  if (parseHash() === "/") renderHome();
 });
 window.addEventListener("appinstalled", () => { installPrompt = null; });
 
@@ -1278,8 +2000,6 @@ if ("serviceWorker" in navigator) {
         const sw = reg.installing;
         if (!sw) return;
         sw.addEventListener("statechange", () => {
-          // Only prompt when this is an update to an already-controlled page,
-          // never on the very first install.
           if (sw.state === "installed" && navigator.serviceWorker.controller) {
             toast("A new version is ready.", "Reload", () => location.reload());
           }
@@ -1290,14 +2010,35 @@ if ("serviceWorker" in navigator) {
 }
 
 /* ---------- boot ---------- */
-renderHomeNow();
+// Web Share Target: a share of text/URL containing a barcode lands here as
+// ?text=…; pull the digits out and jump straight to the result.
+(function () {
+  try {
+    const sp = new URLSearchParams(location.search);
+    const shared = `${sp.get("text") || ""} ${sp.get("title") || ""} ${sp.get("url") || ""}`;
+    const m = shared.match(/\d[\d\s-]{6,}\d/);
+    if (m) {
+      const code = m[0].replace(/\D/g, "");
+      if (code.length >= 8 && code.length <= 14) {
+        history.replaceState(null, "", location.pathname + "#/product/" + code);
+      }
+    }
+  } catch (e) {}
+})();
+
+route();
 buildIndex(false)
   .catch(() => { recallIndex = recallIndex || { at: Date.now(), rows: [], fda: false, usda: false }; })
   .then(() => {
-    // Patch just the source line — a full re-render here would wipe whatever
-    // screen the user has already navigated to, and reset their scroll.
-    const line = document.getElementById("srcline");
-    if (line && view === "home") line.innerHTML = sourceTags();
+    // Patch, don't re-render — a full render would wipe whatever screen the
+    // user has navigated to and reset their scroll.
+    if (parseHash() !== "/") return;
+    const s = document.getElementById("srcline");
+    if (s) s.innerHTML = sourceTags();
+    const a = document.getElementById("alerts");
+    if (a) a.outerHTML = alertsHtml();
+    const t2 = document.getElementById("teaser");
+    if (t2) t2.outerHTML = teaserHtml();
   });
 </script>
 </body>

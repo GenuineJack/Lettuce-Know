@@ -117,7 +117,7 @@ console.log('\n[3] EU/US divergence + macadamia false-positive regression');
   ok(names.length===1 && /Titanium dioxide/.test(names[0]), 'titanium dioxide flagged, exactly 1 entry');
   ok(!names.join(' ').includes('Azodicarbonamide'), 'MACADAMIA does NOT flag azodicarbonamide');
   ok(await page.locator('.badge-scroll').count() === 0, 'chip row hidden for single entry');
-  ok(await page.locator('.src-link').count() === 1, 'source link rendered');
+  ok(await page.locator('.divergence-card .src-link').count() === 1, 'source link rendered');
   await ctx.close();
 }
 
@@ -213,9 +213,9 @@ console.log('\n[8] Recent scans are tappable');
   await page.goto(BASE); await page.waitForTimeout(700);
   await page.click('[data-act="manual"]'); await page.fill('#code','0071430000');
   await page.click('button[type=submit]'); await page.waitForSelector('.v-title',{timeout:8000});
-  await page.click('.back'); await page.waitForTimeout(300);
-  ok(await page.locator('button.hist').count() === 1, 'recent scan rendered as a button');
-  await page.click('button.hist'); await page.waitForSelector('.v-title',{timeout:8000});
+  await page.goto(BASE + '/#/'); await page.waitForTimeout(400);
+  ok(await page.locator('button.hist').count() >= 1, 'recent scan rendered as a button');
+  await page.click('button.hist[data-act="recheck"]'); await page.waitForSelector('.v-title',{timeout:8000});
   eq(await page.locator('.v-title').innerText(), 'Recalled', 'tapping a recent scan re-checks it');
   ok(errs.length===0, 'no errors ('+errs.join('|')+')');
   await ctx.close();
@@ -232,7 +232,7 @@ console.log('\n[9] Accessibility basics');
   ok(await page.evaluate(()=>{const i=document.getElementById('code');
     return !!document.querySelector('label[for=code]') && i.getAttribute('aria-describedby').includes('code-hint');}), 'input labelled + described');
   // keyboard reachability
-  await page.click('[data-act="home"]'); await page.waitForTimeout(300);
+  await page.click('.back'); await page.waitForTimeout(300);
   const reach = await page.evaluate(()=>{
     const f=[...document.querySelectorAll('button,input,a[href]')].filter(e=>e.offsetParent!==null||e.tagName==='A');
     return f.length; });
@@ -291,9 +291,9 @@ console.log('\n[13] Stale-render race: navigate away mid-lookup');
   await page.goto(BASE); await page.waitForTimeout(700);
   await page.click('[data-act="manual"]'); await page.fill('#code','0071430000');
   await page.click('button[type=submit]'); await page.waitForTimeout(250);
-  await page.click('.back');                       // bail out mid-flight
+  await page.click('.back');                       // bail out mid-flight -> previous screen (manual)
   await page.waitForTimeout(2200);                 // let the stale lookup resolve
-  ok(await page.locator('h1').first().innerText() === "We'll tell you.", 'stale lookup does NOT clobber home screen');
+  eq(await page.locator('h1').first().innerText(), 'Type the barcode', 'stale lookup does NOT clobber the screen we went back to');
   ok(errs.length===0, 'no errors ('+errs.join('|')+')');
   await ctx.close();
 }
@@ -313,7 +313,7 @@ console.log('\n[14] Service worker: offline fallback + shell cache');
   });
   ok(r.status === 503, 'uncacheable offline request -> synthesized 503, not a broken response [got '+JSON.stringify(r)+']');
   const shell = await page.evaluate(async () => {
-    const c = await caches.open('recall-shell-v4'); const k = await c.keys(); return k.map(x=>new URL(x.url).pathname).sort(); });
+    const c = await caches.open('recall-shell-v5'); const k = await c.keys(); return k.map(x=>new URL(x.url).pathname).sort(); });
   ok(shell.includes('/index.html') && shell.includes('/eu-us-data.js'), 'app shell precached ['+shell.join(',')+']');
   await ctx.close();
 }
@@ -430,6 +430,174 @@ console.log('\n[19] Index persistence sheds rows instead of caching nothing');
   const live = await page.evaluate(()=>recallIndex.rows.length);
   ok(live === 400, 'the in-memory index keeps every row ['+live+']');
   ok(errs.length===0, 'no errors ('+errs.join('|')+')');
+  await ctx.close();
+}
+
+console.log('\n[20] Deep link + share');
+{
+  const { page, ctx, errs } = await newPage(browser);
+  await page.goto(BASE + '/#/product/0071430000');
+  await page.waitForSelector('.v-title', { timeout: 8000 });
+  eq(await page.locator('.v-title').innerText(), 'Recalled', 'deep link #/product renders the result directly');
+  const share = page.locator('[data-act="share"]');
+  ok(await share.count() === 1, 'share button present');
+  eq(await share.getAttribute('data-arg'), '0071430000', 'share carries the barcode');
+  ok(errs.length===0, 'no errors ('+errs.join('|')+')');
+  await ctx.close();
+}
+
+console.log('\n[21] Web Share Target (?text=) boot param');
+{
+  const { page, ctx, errs } = await newPage(browser);
+  await page.goto(BASE + '/?text=' + encodeURIComponent('Check this one 0 07143 00000 0 please'));
+  await page.waitForSelector('.v-title', { timeout: 8000 });
+  eq(await page.locator('.v-title').innerText(), 'Recalled', 'shared text containing a barcode jumps to its result');
+  ok(errs.length===0, 'no errors ('+errs.join('|')+')');
+  await ctx.close();
+}
+
+console.log('\n[22] Tab bar + recalls browser');
+{
+  const { page, ctx, errs } = await newPage(browser);
+  await page.goto(BASE); await page.waitForTimeout(900);
+  ok(await page.locator('.tabbar button').count() === 4, 'four tabs on home');
+  ok(await page.locator('.teaser').count() === 1, 'recall teaser card on home');
+  await page.click('.tabbar [data-arg="/recalls"]'); await page.waitForTimeout(400);
+  eq(await page.locator('h1').first().innerText(), 'Recent recalls', 'Recalls tab renders');
+  ok(await page.locator('details.recd').count() === 2, 'both fixture recalls listed');
+  await page.click('[data-act="rfilter"][data-arg="FDA"]'); await page.waitForTimeout(200);
+  ok(await page.locator('details.recd').count() === 1, 'FDA filter narrows to 1');
+  await page.click('[data-act="rfilter"][data-arg="all"]'); await page.waitForTimeout(200);
+  await page.fill('#recq', 'acme'); await page.waitForTimeout(250);
+  const firms = await page.locator('.recd-firm').allInnerTexts();
+  ok(firms.length === 1 && /Acme/.test(firms[0]), 'search filters to the Acme recall ['+firms.join(',')+']');
+  await page.fill('#recq', 'zzz-no-match'); await page.waitForTimeout(250);
+  ok((await page.locator('#reclist .empty').count()) === 1, 'no-match search shows an empty state');
+  // expanding a row shows the full card
+  await page.fill('#recq', ''); await page.waitForTimeout(250);
+  await page.locator('details.recd summary').first().click(); await page.waitForTimeout(200);
+  ok(await page.locator('details.recd[open] .card').count() === 1, 'expanding a row reveals the detail card');
+  ok(errs.length===0, 'no errors ('+errs.join('|')+')');
+  await ctx.close();
+}
+
+console.log('\n[23] Watchlist: watch, saved tab, alert banner, ack');
+{
+  const { page, ctx, errs } = await newPage(browser);
+  await page.goto(BASE); await page.waitForTimeout(800);
+  // Scan the recalled product and watch it.
+  await page.click('[data-act="manual"]'); await page.fill('#code','0071430000');
+  await page.click('button[type=submit]'); await page.waitForSelector('.v-title',{timeout:8000});
+  await page.click('[data-act="watch"]'); await page.waitForTimeout(300);
+  ok((await page.locator('[data-act="watch"]').innerText()).includes('Watching'), 'watch button toggles to Watching');
+  // Saved tab lists it with a live tier pill.
+  await page.goto(BASE + '/#/saved'); await page.waitForTimeout(500);
+  ok(await page.locator('.saved-row').count() === 1, 'saved tab lists the watched product');
+  ok((await page.locator('.saved-row .pill').innerText()) === 'RECALLED', 'live tier pill computed');
+  // The user just viewed the result, so its tier is acknowledged: no banner.
+  await page.goto(BASE + '/#/'); await page.waitForTimeout(500);
+  ok(await page.locator('.banner').count() === 0, 'no banner for an already-seen match');
+  // Simulate the recall appearing AFTER the product was saved: reset ack.
+  await page.evaluate(() => {
+    const w = JSON.parse(localStorage.getItem('rc_watch_v1'));
+    w[0].ack = 'none';
+    localStorage.setItem('rc_watch_v1', JSON.stringify(w));
+  });
+  await page.reload(); await page.waitForTimeout(900);
+  ok(await page.locator('.banner').count() === 1, 'new match raises a Home banner');
+  // Tapping the banner opens the product and acknowledges it.
+  await page.click('.banner'); await page.waitForSelector('.v-title',{timeout:8000});
+  await page.goto(BASE + '/#/'); await page.waitForTimeout(500);
+  ok(await page.locator('.banner').count() === 0, 'viewing the product clears the banner');
+  // Unwatch from Saved.
+  await page.goto(BASE + '/#/saved'); await page.waitForTimeout(400);
+  await page.click('[data-act="unwatch"]'); await page.waitForTimeout(300);
+  ok(await page.locator('.empty').count() === 1, 'unwatching returns Saved to its empty state');
+  ok(errs.length===0, 'no errors ('+errs.join('|')+')');
+  await ctx.close();
+}
+
+console.log('\n[24] Settings: allergens, avoid list, state filter');
+{
+  const { page, ctx, errs } = await newPage(browser, {
+    off:{ product_name:'Choco Milk Bites', brands:'Nobody Snacks', categories:'Snacks',
+          ingredients_text:'SUGAR, MILK, COCOA, RED 40, SALT', additives_tags:[] } });
+  await page.goto(BASE + '/#/settings'); await page.waitForTimeout(600);
+  eq(await page.locator('h1').first().innerText(), 'Settings', 'settings renders');
+  // Toggle Milk allergen + add a free-text avoid term.
+  await page.click('[data-act="allergen"][data-arg="milk"]'); await page.waitForTimeout(150);
+  ok(await page.evaluate(() => JSON.parse(localStorage.getItem('rc_prefs_v1')).allergens.includes('milk')), 'allergen persisted');
+  await page.fill('#avin', 'red 40');
+  await page.click('form[data-act="avoid-add"] button[type=submit]'); await page.waitForTimeout(200);
+  ok(await page.locator('#avlist .chip-x').count() === 1, 'avoid term chip added');
+  // Set state to Texas (fixture recall ships to CA, NV, OR only).
+  await page.selectOption('#stsel', 'TX'); await page.waitForTimeout(200);
+  ok(await page.evaluate(() => JSON.parse(localStorage.getItem('rc_prefs_v1')).state === 'TX'), 'state persisted');
+  // Scan: flags card must show both hits; recall card must carry the state note.
+  await page.goto(BASE + '/#/product/0071430001'); await page.waitForSelector('.v-title',{timeout:8000});
+  const flags = await page.locator('.chip-red').allInnerTexts();
+  ok(flags.some(f=>/Milk/.test(f)), 'milk allergen flagged ['+flags.join('|')+']');
+  ok(flags.some(f=>/red 40/i.test(f)), 'avoid term flagged');
+  ok(errs.length===0, 'no errors ('+errs.join('|')+')');
+  await ctx.close();
+}
+{
+  // State note on a recalled product whose distribution excludes the user's state.
+  const { page, ctx } = await newPage(browser);
+  await page.addInitScript(() => localStorage.setItem('rc_prefs_v1', JSON.stringify({allergens:[],avoid:[],state:'TX'})));
+  await page.goto(BASE + '/#/product/0071430000'); await page.waitForSelector('.v-title',{timeout:8000});
+  const cardText = await page.locator('.card').first().innerText();
+  ok(/doesn't mention Texas/.test(cardText), 'recall card notes the state mismatch');
+  await ctx.close();
+}
+{
+  // Allergen prefs set but product has no ingredient list -> honest "couldn't check".
+  const { page, ctx } = await newPage(browser, {
+    off:{ product_name:'Mystery Snack', brands:'Nobody', categories:'', ingredients_text:'', additives_tags:[] } });
+  await page.addInitScript(() => localStorage.setItem('rc_prefs_v1', JSON.stringify({allergens:['milk'],avoid:[],state:''})));
+  await page.goto(BASE + '/#/product/0071430002'); await page.waitForSelector('.v-title',{timeout:8000});
+  const t = await page.locator('.card', { hasText: 'Your flags' }).innerText();
+  ok(/couldn't be checked/.test(t), 'no-ingredients case says flags could not be checked');
+  await ctx.close();
+}
+
+console.log('\n[25] Batch (pantry check) mode');
+{
+  const { page, ctx, errs } = await newPage(browser);
+  await page.goto(BASE + '/#/scan'); await page.waitForTimeout(900); // camera fails in headless; batch still works
+  await page.click('[data-act="mode"][data-arg="batch"]'); await page.waitForTimeout(200);
+  await page.evaluate(() => onScanDecode('0071430000'));
+  await page.evaluate(() => onScanDecode('0071430000')); // duplicate must be ignored
+  await page.waitForTimeout(1200);
+  ok(await page.locator('.batch-item').count() === 1, 'duplicate scan deduped');
+  ok((await page.locator('.batch-item .pill').innerText()) === 'RECALLED', 'batch item resolved to a verdict');
+  await page.evaluate(() => onScanDecode('9990000001'));
+  await page.waitForTimeout(1200);
+  await page.click('[data-act="batch-done"]'); await page.waitForTimeout(400);
+  eq(await page.locator('h1').first().innerText(), 'Pantry check', 'summary screen renders');
+  // The OFF mock returns the same recalled product for every code, so both land in "Recalled".
+  ok((await page.locator('.stat.bad .n').innerText()) === '2', 'summary counts the recalled items');
+  await page.locator('button.hist').first().click(); await page.waitForSelector('.v-title',{timeout:8000});
+  eq(await page.locator('.v-title').innerText(), 'Recalled', 'tapping a batch row opens the full result');
+  ok(errs.length===0, 'no errors ('+errs.join('|')+')');
+  await ctx.close();
+}
+
+console.log('\n[26] Manifest: shortcuts + share_target');
+{
+  const m = JSON.parse(fs.readFileSync(ROOT + '/manifest.webmanifest', 'utf8'));
+  ok(Array.isArray(m.shortcuts) && m.shortcuts.length === 3, 'three app shortcuts declared');
+  ok(m.share_target && m.share_target.method === 'GET' && m.share_target.params.text === 'text', 'GET share_target declared');
+  ok(m.shortcuts.every(x => x.url.startsWith('/#/')), 'shortcut URLs stay in scope');
+}
+
+console.log('\n[27] Scan-from-photo affordance');
+{
+  const { page, ctx } = await newPage(browser);
+  await page.goto(BASE + '/#/scan'); await page.waitForTimeout(600);
+  ok(await page.locator('[data-act="photo"]').count() === 1, 'photo button on scan screen');
+  ok(await page.locator('#photoin').count() === 1, 'hidden file input present');
+  eq(await page.getAttribute('#photoin', 'accept'), 'image/*', 'input accepts images');
   await ctx.close();
 }
 
