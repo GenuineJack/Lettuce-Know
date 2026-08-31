@@ -34,7 +34,8 @@ if (!Array.isArray(EU_US_DIVERGENCE) || EU_US_DIVERGENCE.length === 0) {
 
 const SITE_URL = "https://lettuce-know.vercel.app/eu-us-watch.html"; // TODO: must match the real deployed domain
 const APP_URL = "https://lettuce-know.vercel.app/";
-const OG_IMAGE = "https://lettuce-know.vercel.app/brand/lockup.svg"; // TODO: must match the real deployed domain
+// SVG og:image doesn't render on Facebook/LinkedIn/Threads crawlers — raster only.
+const OG_IMAGE = "https://lettuce-know.vercel.app/icons/icon-512.png"; // TODO: must match the real deployed domain
 
 const PAGE_TITLE = "Food Additives: Banned in the EU, Legal in the US";
 const PAGE_DESCRIPTION =
@@ -97,6 +98,7 @@ const html = `<!DOCTYPE html>
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${escapeHtml(PAGE_TITLE)}">
 <meta name="twitter:description" content="${escapeHtml(PAGE_DESCRIPTION)}">
+<meta name="twitter:image" content="${OG_IMAGE}">
 
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
