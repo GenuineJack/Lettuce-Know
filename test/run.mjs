@@ -77,7 +77,7 @@ console.log('\n[1] Home + boot');
 {
   const { page, ctx, errs } = await newPage(browser);
   await page.goto(BASE); await page.waitForTimeout(900);
-  ok(await page.locator('h1').first().innerText() === "We'll tell you.", 'h1 renders');
+  ok((await page.locator('h1').first().innerText()).includes("We'll tell you."), 'h1 renders');
   ok((await page.locator('.tag').allInnerTexts()).some(t=>/FDA loaded/.test(t)), 'FDA tag loaded');
   ok((await page.locator('.tag').allInnerTexts()).some(t=>/USDA loaded/.test(t)), 'USDA tag loaded');
   ok((await page.locator('.tag').allInnerTexts()).some(t=>/2 recalls/.test(t)), 'recall count shown');
@@ -127,10 +127,10 @@ console.log('\n[4] Back button + history');
   await page.goto(BASE); await page.waitForTimeout(700);
   await page.click('[data-act="manual"]');
   await page.goBack(); await page.waitForTimeout(250);
-  ok(await page.locator('h1').first().innerText() === "We'll tell you.", 'browser Back returns home');
+  ok((await page.locator('h1').first().innerText()).includes("We'll tell you."), 'browser Back returns home');
   await page.click('[data-act="manual"]'); await page.waitForTimeout(150);
   await page.click('.back'); await page.waitForTimeout(250);
-  ok(await page.locator('h1').first().innerText() === "We'll tell you.", 'in-app Back returns home');
+  ok((await page.locator('h1').first().innerText()).includes("We'll tell you."), 'in-app Back returns home');
   ok(errs.length===0, 'no errors ('+errs.join('|')+')');
   await ctx.close();
 }
@@ -151,7 +151,7 @@ console.log('\n[5] Failure states');
   await page.goto(BASE); await page.waitForTimeout(700);
   await page.click('[data-act="manual"]'); await page.fill('#code','0071430000');
   await page.click('button[type=submit]'); await page.waitForSelector('.v-title',{timeout:8000});
-  eq(await page.locator('.v-title').innerText(), 'No data on this product', 'unknown barcode -> nodata');
+  eq(await page.locator('.v-title').innerText(), 'Not in either database', 'unknown barcode -> nodata');
   ok(await page.locator('.stack .primary').count() === 1, 'only ONE primary CTA on nodata screen');
   await ctx.close();
 }
@@ -173,7 +173,7 @@ console.log('\n[6] Corrupt / hostile localStorage (previously fatal)');
     localStorage.setItem('rc_index_v3', 'also not json');
   });
   await page.goto(BASE); await page.waitForTimeout(900);
-  ok(await page.locator('h1').first().innerText() === "We'll tell you.", 'app still boots with corrupt storage');
+  ok((await page.locator('h1').first().innerText()).includes("We'll tell you."), 'app still boots with corrupt storage');
   ok(errs.length===0, 'no errors ('+errs.join('|')+')');
   await ctx.close();
 }
@@ -181,7 +181,7 @@ console.log('\n[6] Corrupt / hostile localStorage (previously fatal)');
   const { page, ctx, errs } = await newPage(browser);
   await page.addInitScript(() => { localStorage.setItem('rc_history', '{"not":"an array"}'); });
   await page.goto(BASE); await page.waitForTimeout(800);
-  ok(await page.locator('h1').first().innerText() === "We'll tell you.", 'boots with non-array history');
+  ok((await page.locator('h1').first().innerText()).includes("We'll tell you."), 'boots with non-array history');
   ok(errs.length===0, 'no errors ('+errs.join('|')+')');
   await ctx.close();
 }
@@ -293,7 +293,7 @@ console.log('\n[13] Stale-render race: navigate away mid-lookup');
   await page.click('button[type=submit]'); await page.waitForTimeout(250);
   await page.click('.back');                       // bail out mid-flight -> previous screen (manual)
   await page.waitForTimeout(2200);                 // let the stale lookup resolve
-  eq(await page.locator('h1').first().innerText(), 'Type the barcode', 'stale lookup does NOT clobber the screen we went back to');
+  eq(await page.locator('h1').first().innerText(), 'Enter the barcode', 'stale lookup does NOT clobber the screen we went back to');
   ok(errs.length===0, 'no errors ('+errs.join('|')+')');
   await ctx.close();
 }
@@ -312,8 +312,9 @@ console.log('\n[14] Service worker: offline fallback + shell cache');
     catch (e) { return { threw: String(e) }; }
   });
   ok(r.status === 503, 'uncacheable offline request -> synthesized 503, not a broken response [got '+JSON.stringify(r)+']');
-  const shell = await page.evaluate(async () => {
-    const c = await caches.open('recall-shell-v5'); const k = await c.keys(); return k.map(x=>new URL(x.url).pathname).sort(); });
+  const shellName = (fs.readFileSync(ROOT + '/sw.js', 'utf8').match(/SHELL_CACHE\s*=\s*"([^"]+)"/) || [])[1];
+  const shell = await page.evaluate(async (name) => {
+    const c = await caches.open(name); const k = await c.keys(); return k.map(x=>new URL(x.url).pathname).sort(); }, shellName);
   ok(shell.includes('/index.html') && shell.includes('/eu-us-data.js'), 'app shell precached ['+shell.join(',')+']');
   await ctx.close();
 }
@@ -463,7 +464,7 @@ console.log('\n[22] Tab bar + recalls browser');
   ok(await page.locator('.tabbar button').count() === 4, 'four tabs on home');
   ok(await page.locator('.teaser').count() === 1, 'recall teaser card on home');
   await page.click('.tabbar [data-arg="/recalls"]'); await page.waitForTimeout(400);
-  eq(await page.locator('h1').first().innerText(), 'Recent recalls', 'Recalls tab renders');
+  eq(await page.locator('h1').first().innerText(), 'Every recall on file', 'Recalls tab renders');
   ok(await page.locator('details.recd').count() === 2, 'both fixture recalls listed');
   await page.click('[data-act="rfilter"][data-arg="FDA"]'); await page.waitForTimeout(200);
   ok(await page.locator('details.recd').count() === 1, 'FDA filter narrows to 1');
@@ -493,7 +494,7 @@ console.log('\n[23] Watchlist: watch, saved tab, alert banner, ack');
   // Saved tab lists it with a live tier pill.
   await page.goto(BASE + '/#/saved'); await page.waitForTimeout(500);
   ok(await page.locator('.saved-row').count() === 1, 'saved tab lists the watched product');
-  ok((await page.locator('.saved-row .pill').innerText()) === 'RECALLED', 'live tier pill computed');
+  ok((await page.locator('.saved-row .pill').innerText()) === 'Recalled', 'live tier pill computed');
   // The user just viewed the result, so its tier is acknowledged: no banner.
   await page.goto(BASE + '/#/'); await page.waitForTimeout(500);
   ok(await page.locator('.banner').count() === 0, 'no banner for an already-seen match');
@@ -570,7 +571,7 @@ console.log('\n[25] Batch (pantry check) mode');
   await page.evaluate(() => onScanDecode('0071430000')); // duplicate must be ignored
   await page.waitForTimeout(1200);
   ok(await page.locator('.batch-item').count() === 1, 'duplicate scan deduped');
-  ok((await page.locator('.batch-item .pill').innerText()) === 'RECALLED', 'batch item resolved to a verdict');
+  ok((await page.locator('.batch-item .pill').innerText()) === 'Recalled', 'batch item resolved to a verdict');
   await page.evaluate(() => onScanDecode('9990000001'));
   await page.waitForTimeout(1200);
   await page.click('[data-act="batch-done"]'); await page.waitForTimeout(400);

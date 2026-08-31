@@ -1,4 +1,4 @@
-const SHELL_CACHE = "recall-shell-v5";
+const SHELL_CACHE = "recall-shell-v6";
 const DATA_CACHE  = "recall-data-v1";
 const KEEP = [SHELL_CACHE, DATA_CACHE];
 const SHELL_FILES = ["/", "/index.html", "/eu-us-data.js", "/manifest.webmanifest"];

@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b1f16">
-<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#F4F8F4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0b1f16" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
 <meta name="description" content="Scan a grocery barcode to check live FDA and USDA recalls, watch products for new recalls, and flag ingredients the US and EU regulate differently.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
@@ -17,45 +18,78 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="eu-us-data.js"></script>
 <style>
+/* ---------------------------------------------------------------
+   Light is the default. The dark block below restores the original
+   palette for prefers-color-scheme:dark — same token names, so every
+   rule downstream is theme-agnostic.
+   --------------------------------------------------------------- */
 :root{
-  --bg:#0b1f16; --bg-2:#0f261b; --card:#123122; --card-2:#16392a; --line:#1e4632; --line-soft:#173a29;
-  --fg:#eef7f0; --dim:#8fac9a; --dim-2:#86a394;
-  --green:#4ade80; --green-dim:#2f7a52; --green-bg:#11331f;
-  --amber:#f0b429; --amber-bg:#2e2410; --amber-line:#5c4a1c;
-  --red:#f5615c; --red-bg:#2e1616; --red-line:#5c2321;
+  --bg:#F4F8F4; --bg-2:#EDF3EE; --card:#FFFFFF; --card-2:#F7FAF7;
+  --line:#E1EAE3; --line-soft:#EDF3EE;
+  --fg:#10231A; --dim:#54685E; --dim-2:#5F7369;
+  --green:#16A34A; --green-dim:#0F7C36; --green-bg:#E7F6ED; --green-line:#C7E9D5;
+  /* green that carries text (>=4.5:1 on card, page and green-bg) vs green used as a fill */
+  --green-ink:#0B6E30; --green-fill:#0F7C36;
+  --amber:#9A4A08; --amber-bg:#FDF3E3; --amber-line:#F0D7A8;
+  --red:#C42B2B; --red-bg:#FDECEC; --red-line:#F4C9C9;
+  --on-green:#FFFFFF; --on-amber:#FFFFFF;
+  --ic-bg:#FFFFFF; --sw-off:#CFDBD3;
+  --scrim:rgba(255,255,255,.92);
+  --backdrop:rgba(16,35,26,.45);
+  --glow:rgba(22,163,74,.42);
+  --shadow:0 1px 2px rgba(16,35,26,.04), 0 10px 28px -14px rgba(16,35,26,.16);
+  --shadow-lg:0 2px 4px rgba(16,35,26,.05), 0 18px 40px -18px rgba(16,35,26,.22);
 
   /* Spacing scale — 4px base. Every margin/padding below picks from this. */
   --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:20px; --s6:24px; --s7:32px; --s8:40px;
   /* Radius scale */
-  --r-sm:10px; --r-md:14px; --r-lg:18px; --r-xl:20px; --r-pill:99px;
+  --r-sm:12px; --r-md:16px; --r-lg:20px; --r-xl:26px; --r-pill:99px;
   --tabbar-h:64px;
   font-size:16px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0b1f16; --bg-2:#0f261b; --card:#123122; --card-2:#16392a;
+    --line:#1e4632; --line-soft:#173a29;
+    --fg:#eef7f0; --dim:#9cb8a7; --dim-2:#8fac9a;
+    --green:#4ade80; --green-dim:#2f7a52; --green-bg:#11331f; --green-line:#2f7a52;
+    --green-ink:#4ade80; --green-fill:#4ade80;
+    --amber:#f0b429; --amber-bg:#2e2410; --amber-line:#5c4a1c;
+    --red:#f5615c; --red-bg:#2e1616; --red-line:#5c2321;
+    --on-green:#06170e; --on-amber:#2e2410;
+    --ic-bg:rgba(255,255,255,.10); --sw-off:rgba(255,255,255,.20);
+    --scrim:rgba(11,31,22,.92);
+    --backdrop:rgba(4,14,10,.74);
+    --glow:rgba(74,222,128,.40);
+    --shadow:0 1px 2px rgba(0,0,0,.20), 0 10px 28px -14px rgba(0,0,0,.55);
+    --shadow-lg:0 2px 4px rgba(0,0,0,.25), 0 18px 40px -18px rgba(0,0,0,.65);
+  }
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
 body{
   font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
-  background:radial-gradient(120% 90% at 50% -10%, var(--bg-2), var(--bg) 60%);
+  background:radial-gradient(120% 90% at 50% -8%, var(--bg-2), var(--bg) 62%);
   background-attachment:fixed;
   color:var(--fg); min-height:100dvh; overscroll-behavior-y:none;
   -webkit-font-smoothing:antialiased;
 }
 ::selection{background:var(--green-dim);color:var(--fg)}
-.display{font-family:'Space Grotesk',sans-serif}
+.display{font-family:'Plus Jakarta Sans',sans-serif}
 .wrap{max-width:480px;margin:0 auto;padding:0 var(--s5) calc(var(--s7) + env(safe-area-inset-bottom))}
 .topbar{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);padding:calc(18px + env(safe-area-inset-top)) 0 var(--s2)}
 .brand{display:flex;align-items:center;gap:var(--s3)}
 .brand-mark{width:34px;height:34px;flex-shrink:0}
-.brand-name{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px;letter-spacing:-.01em}
+.brand-name{font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;font-size:17px;letter-spacing:-.01em}
 .topbar-actions{display:flex;align-items:center;gap:var(--s1)}
 
 /* Type scale — 28 / 22 / 17 / 15 / 13 / 11, line-heights tuned per step. */
-h1{font-family:'Space Grotesk',sans-serif;font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
-h2{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:600;letter-spacing:-.01em;line-height:1.25}
-h3{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:600;letter-spacing:-.005em;line-height:1.35}
+h1{font-family:'Plus Jakarta Sans',sans-serif;font-size:28px;font-weight:700;letter-spacing:-.02em;line-height:1.15}
+h2{font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:600;letter-spacing:-.01em;line-height:1.25}
+h3{font-family:'Plus Jakarta Sans',sans-serif;font-size:15px;font-weight:600;letter-spacing:-.005em;line-height:1.35}
 h1:focus,h2:focus,h3:focus{outline:none}
 .sub{color:var(--dim);font-size:15px;margin-top:var(--s2);line-height:1.55}
 
@@ -65,8 +99,8 @@ button{font:inherit;border:0;cursor:pointer;width:100%;border-radius:var(--r-md)
   transition:transform .08s ease, opacity .15s ease, background .15s ease, filter .15s ease, border-color .15s ease}
 button:active:not(:disabled){transform:scale(.98)}
 button:disabled{opacity:.5;cursor:not-allowed;transform:none}
-.primary{background:linear-gradient(135deg,#4ade80,#2fbf6c);color:#06170e;box-shadow:0 8px 24px -8px rgba(74,222,128,.45)}
-.ghost{background:var(--card);color:var(--fg);border:1px solid var(--line)}
+.primary{background:var(--green-fill);color:var(--on-green);box-shadow:0 10px 24px -10px var(--glow)}
+.ghost{background:var(--card);color:var(--fg);border:1px solid var(--line);box-shadow:var(--shadow)}
 .ghost:active:not(:disabled){background:var(--card-2)}
 @media (hover:hover){
   .primary:hover:not(:disabled){filter:brightness(1.07)}
@@ -94,12 +128,12 @@ select{appearance:none;-webkit-appearance:none;background-image:url("data:image/
 .field-hint{font-size:13px;color:var(--dim);margin-top:var(--s2);line-height:1.5}
 
 .stack>*+*{margin-top:var(--s3)}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:var(--s5)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);padding:var(--s5);box-shadow:var(--shadow)}
 
 /* Verdict ring — the signature element. Same ring shape as the scan
    frame; on the result screen it resolves into the verdict icon. */
-.ring-wrap{display:flex;justify-content:center;margin:var(--s2) 0 var(--s5)}
-.ring{width:96px;height:96px;position:relative}
+.ring-wrap{display:flex;justify-content:center;margin:0 auto var(--s4)}
+.ring{width:88px;height:88px;position:relative;border-radius:50%;background:var(--card);box-shadow:var(--shadow)}
 /* Scoped to the direct child: the -90deg start-angle rotation belongs to the
    ring track only. Unscoped it also hit the icon inside .ring-icon, which
    rendered the verdict checkmark on its side as a chevron. */
@@ -115,10 +149,11 @@ select{appearance:none;-webkit-appearance:none;background-image:url("data:image/
 .v-bad{background:var(--red-bg);border-color:var(--red-line);box-shadow:0 12px 40px -18px rgba(245,97,92,.35)}
 .v-ok{background:var(--green-bg);border-color:var(--green-dim);box-shadow:0 12px 40px -18px rgba(74,222,128,.3)}
 .v-warn{background:var(--amber-bg);border-color:var(--amber-line);box-shadow:0 12px 40px -18px rgba(240,180,41,.28)}
-.v-title{font-family:'Space Grotesk',sans-serif;font-size:23px;font-weight:700;letter-spacing:-.01em}
-.v-bad .v-title{color:var(--red)}.v-ok .v-title{color:var(--green)}.v-warn .v-title{color:var(--amber)}
-.v-body{margin-top:var(--s2);font-size:15px;line-height:1.55;color:var(--fg);opacity:.9;max-width:36ch;margin-left:auto;margin-right:auto}
+.v-title{font-family:'Plus Jakarta Sans',sans-serif;font-size:23px;font-weight:700;letter-spacing:-.01em}
+.v-bad .v-title{color:var(--red)}.v-ok .v-title{color:var(--green-ink)}.v-warn .v-title{color:var(--amber)}
+.v-body{margin-top:var(--s2);font-size:14.5px;line-height:1.5;color:var(--dim);max-width:32ch;margin-left:auto;margin-right:auto}
 
+.card dl{margin-top:var(--s3)}
 .row{display:flex;justify-content:space-between;gap:var(--s4);padding:var(--s3) 0;border-top:1px solid var(--line-soft);font-size:14px}
 .row:first-child{border-top:0;padding-top:0}
 .row dt{color:var(--dim);flex-shrink:0}
@@ -128,6 +163,12 @@ select{appearance:none;-webkit-appearance:none;background-image:url("data:image/
 .list li:first-child{border-top:0;padding-top:0}
 .list li::before{content:"";position:absolute;left:2px;top:1.05em;width:9px;height:2px;background:var(--green);opacity:.65;border-radius:1px}
 .list li:first-child::before{top:.55em}
+/* Numbered variant — used for the "what to do" steps on a recall. */
+ol.list{counter-reset:step}
+ol.list li{counter-increment:step;padding-left:26px}
+ol.list li::before{content:counter(step);left:0;top:auto;width:auto;height:auto;background:none;
+  color:var(--green-ink);font-weight:800;font-size:13px;opacity:1;border-radius:0}
+ol.list li:first-child::before{top:auto}
 .label{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim-2);font-weight:700;margin-bottom:var(--s3)}
 
 .scan-frame{position:relative}
@@ -136,33 +177,38 @@ select{appearance:none;-webkit-appearance:none;background-image:url("data:image/
 #reader video{width:100%!important;display:block}
 .cam-wait{color:var(--dim);font-size:14px;display:flex;flex-direction:column;align-items:center;gap:var(--s3);padding:var(--s5)}
 .torch{position:absolute;right:var(--s3);bottom:var(--s3);z-index:2;width:44px;height:44px;min-height:44px;
-  padding:0;border-radius:50%;background:rgba(11,31,22,.78);border:1px solid var(--line);color:var(--fg);
+  padding:0;border-radius:50%;background:rgba(10,26,19,.72);border:1px solid rgba(255,255,255,.22);color:#EAF4EC;
   display:inline-flex;align-items:center;justify-content:center}
-.torch[aria-pressed="true"]{background:var(--amber);color:#2e2410;border-color:var(--amber)}
+.torch[aria-pressed="true"]{background:var(--amber);color:var(--on-amber);border-color:var(--amber)}
 
 /* Segmented control (scan mode, recall source filter). */
-.seg{display:flex;gap:var(--s1);padding:var(--s1);background:var(--card);border:1px solid var(--line);border-radius:var(--r-md)}
-.seg button{flex:1;min-height:44px;padding:10px var(--s2);border-radius:var(--r-sm);font-size:14px;font-weight:600;color:var(--dim)}
-.seg button.active{background:var(--card-2);color:var(--fg)}
+.seg{display:flex;gap:var(--s1);padding:var(--s1);background:var(--card-2);border:1px solid var(--line);border-radius:var(--r-pill)}
+.seg button{flex:1;min-height:44px;padding:10px var(--s2);border-radius:var(--r-pill);font-size:14px;font-weight:600;color:var(--dim)}
+.seg button.active{background:var(--card);color:var(--fg);box-shadow:var(--shadow)}
 .seg button:active{transform:none}
 
 /* Tappable list rows (recent scans, saved items, batch summary). */
-.hist{display:flex;justify-content:space-between;align-items:center;gap:var(--s3);padding:var(--s3) var(--s2);
-  border-top:1px solid var(--line-soft);width:100%;background:none;border-radius:var(--r-sm);min-height:52px;
-  text-align:left;font-weight:400;font-size:15px;color:var(--fg)}
-.hist:first-of-type{border-top:0}
-.hist:active{background:var(--card)}
-@media (hover:hover){.hist:hover{background:var(--card)}}
-.hist-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hist-sub{display:block;font-size:12px;color:var(--dim-2);margin-top:2px}
-.pill{font-size:11px;font-weight:700;padding:5px 10px;border-radius:var(--r-pill);white-space:nowrap;text-transform:uppercase;letter-spacing:.03em;flex-shrink:0}
+.hist{display:flex;align-items:center;gap:var(--s3);padding:12px var(--s4);width:100%;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);min-height:62px;margin-top:var(--s2);
+  text-align:left;font-weight:400;font-size:15px;color:var(--fg);box-shadow:var(--shadow)}
+.hist:active{background:var(--card-2)}
+@media (hover:hover){.hist:hover{border-color:var(--green-line)}}
+.hist-main{flex:1;min-width:0}
+.hist-name{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:14.5px;font-weight:600;letter-spacing:-.01em}
+.hist-sub{display:block;font-size:12px;color:var(--dim-2);margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* Product thumbnail: real image when a source gave us one, emoji otherwise. */
+.thumb{width:40px;height:40px;border-radius:11px;background:var(--card-2);border:1px solid var(--line-soft);
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:19px;overflow:hidden;line-height:1}
+.thumb img{width:100%;height:100%;object-fit:contain;background:#fff}
+.pill{font-size:12px;font-weight:700;padding:5px 11px;border-radius:var(--r-pill);white-space:nowrap;letter-spacing:-.01em;flex-shrink:0}
 .p-bad{background:var(--red-bg);color:var(--red)}
-.p-ok{background:var(--green-bg);color:var(--green)}
+.p-ok{background:var(--green-bg);color:var(--green-ink)}
 .p-warn{background:var(--amber-bg);color:var(--amber)}
-.p-dim{background:var(--card-2);color:var(--dim)}
-.saved-row{display:flex;align-items:center;gap:var(--s1);border-top:1px solid var(--line-soft)}
-.saved-row:first-of-type{border-top:0}
-.saved-row .hist{border-top:0;flex:1;min-width:0}
+.p-dim{background:var(--card-2);color:var(--dim);border:1px solid var(--line)}
+.saved-row{display:flex;align-items:center;gap:var(--s1)}
+.saved-row .hist{flex:1;min-width:0}
 
 .back{background:none;color:var(--dim);width:auto;font-size:15px;font-weight:500;margin:var(--s3) 0 var(--s2) -6px;
   display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 6px;border-radius:var(--r-sm)}
@@ -173,7 +219,7 @@ select{appearance:none;-webkit-appearance:none;background-image:url("data:image/
 @media (hover:hover){.icon-btn:hover{background:var(--card-2);color:var(--fg)}}
 .spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--green);border-radius:50%;animation:s .8s linear infinite;margin:0 auto}
 @keyframes s{to{transform:rotate(360deg)}}
-.err{background:var(--red-bg);border:1px solid var(--red-line);color:#ffb3b0;padding:14px;border-radius:var(--r-md);font-size:14px;line-height:1.5}
+.err{background:var(--red-bg);border:1px solid var(--red-line);color:var(--red);padding:14px;border-radius:var(--r-md);font-size:14px;line-height:1.5}
 
 /* Progress steps replace the bare spinner so waits feel intentional. */
 .steps{list-style:none;max-width:260px;margin:var(--s6) auto 0;text-align:left}
@@ -184,12 +230,16 @@ select{appearance:none;-webkit-appearance:none;background-image:url("data:image/
   display:flex;align-items:center;justify-content:center}
 .steps li.done .step-dot{border-color:var(--green-dim);background:var(--green-dim)}
 .steps li.active .step-dot{border-color:var(--green);animation:p 1.4s ease-in-out infinite}
-.step-dot svg{width:10px;height:10px;color:#06170e}
+.step-dot svg{width:10px;height:10px;color:var(--on-green)}
 @keyframes p{0%,100%{opacity:1}50%{opacity:.45}}
 
 .src{display:flex;gap:var(--s2);margin-top:var(--s4);flex-wrap:wrap;justify-content:center;align-items:center}
-.tag{font-size:11px;padding:6px 11px;border-radius:var(--r-pill);border:1px solid var(--line);color:var(--dim);font-weight:500}
-.tag.up{border-color:var(--green-dim);color:var(--green)}
+.tag{display:inline-flex;align-items:center;gap:6px;width:auto;min-height:36px;font-size:12px;padding:7px 12px;
+  border-radius:var(--r-pill);border:1px solid var(--line);background:var(--card);color:var(--dim);
+  font-weight:600;box-shadow:var(--shadow)}
+button.tag:active{transform:scale(.97)}
+@media (hover:hover){button.tag:hover{border-color:var(--green-line);color:var(--fg)}}
+.tag.up{border-color:var(--green-line);color:var(--green-ink)}
 .tag.down{border-color:var(--red-line);color:var(--red)}
 .tag-skel{width:96px;height:27px;border-radius:var(--r-pill);background:var(--card);border:1px solid var(--line);animation:p 1.4s ease-in-out infinite}
 .foot{margin-top:var(--s7);font-size:12.5px;color:var(--dim-2);line-height:1.6;text-align:center}
@@ -198,7 +248,7 @@ select{appearance:none;-webkit-appearance:none;background-image:url("data:image/
 .divergence-card{background:var(--card);border:1px solid var(--amber-line);border-radius:var(--r-md);padding:var(--s5);margin-top:var(--s3)}
 .divergence-card h3{color:var(--amber)}
 .eu-us-row{display:flex;gap:var(--s3);margin-top:var(--s3)}
-.eu-us-col{flex:1;min-width:0;background:var(--bg-2);border-radius:var(--r-sm);padding:var(--s3)}
+.eu-us-col{flex:1;min-width:0;background:var(--card-2);border:1px solid var(--line-soft);border-radius:var(--r-sm);padding:var(--s3)}
 .eu-us-col .k{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--dim-2);font-weight:700;margin-bottom:var(--s1)}
 .eu-us-col .v{font-size:13px;line-height:1.45;font-weight:500;overflow-wrap:anywhere}
 @media (max-width:359px){.eu-us-row{flex-direction:column}}
@@ -207,24 +257,39 @@ select{appearance:none;-webkit-appearance:none;background-image:url("data:image/
 .chip{flex-shrink:0;background:var(--amber-bg);border:1px solid var(--amber-line);color:var(--amber);font-size:12px;font-weight:600;padding:7px 13px;border-radius:var(--r-pill)}
 .chip-red{background:var(--red-bg);border-color:var(--red-line);color:var(--red)}
 .src-link{color:var(--dim);font-size:12px;text-decoration:underline;text-underline-offset:2px}
-.src-link:hover,.src-link:focus-visible{color:var(--green)}
+.src-link:hover,.src-link:focus-visible{color:var(--green-ink)}
 
-/* Toggle chips (allergen picker, avoid list). */
+/* Removable chips for the avoid list. */
+/* Allergen list with real switches — clearer on/off state than chips. */
+.swlist{background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);
+  padding:2px var(--s4);box-shadow:var(--shadow)}
+.swrow{display:flex;align-items:center;gap:var(--s3);width:100%;padding:13px 0;min-height:60px;
+  border-top:1px solid var(--line-soft);background:none;text-align:left;border-radius:0}
+.swrow:first-child{border-top:0}
+.swrow:active{transform:none}
+.swrow .sw-em{font-size:19px;flex-shrink:0;line-height:1;width:22px;text-align:center}
+.swrow .sw-main{flex:1;min-width:0}
+.swrow .sw-name{display:block;font-size:15px;font-weight:600;letter-spacing:-.01em}
+.swrow .sw-sub{display:block;font-size:12px;color:var(--dim-2);margin-top:2px;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sw{width:46px;height:28px;border-radius:var(--r-pill);background:var(--sw-off);position:relative;
+  flex-shrink:0;transition:background .18s ease}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;
+  background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .18s cubic-bezier(.4,0,.2,1)}
+.swrow[aria-pressed="true"] .sw{background:var(--green-fill)}
+.swrow[aria-pressed="true"] .sw::after{transform:translateX(18px)}
 .chips{display:flex;flex-wrap:wrap;gap:var(--s2)}
-.chip-toggle{width:auto;min-height:44px;padding:10px 15px;font-size:14px;font-weight:600;
-  background:var(--card);border:1px solid var(--line);color:var(--dim);border-radius:var(--r-pill)}
-.chip-toggle.on{background:var(--green-bg);border-color:var(--green-dim);color:var(--green)}
 .chip-x{width:auto;min-height:44px;padding:10px 13px;font-size:14px;font-weight:600;display:inline-flex;align-items:center;gap:8px;
   background:var(--amber-bg);border:1px solid var(--amber-line);color:var(--amber);border-radius:var(--r-pill)}
 .chip-x svg{width:13px;height:13px}
 
 /* Watch / share action chips on the result screen. */
 .act-row{display:flex;gap:var(--s2);margin:var(--s3) 0 0;flex-wrap:wrap}
-.chip-act{width:auto;flex:1;min-height:44px;padding:10px 14px;font-size:14px;font-weight:600;
+.chip-act{width:auto;flex:1;min-height:44px;padding:10px 14px;font-size:14px;font-weight:600;box-shadow:var(--shadow);
   background:var(--card);border:1px solid var(--line);color:var(--fg);border-radius:var(--r-md);
   display:inline-flex;align-items:center;justify-content:center;gap:8px}
 .chip-act svg{width:16px;height:16px}
-.chip-act.on{background:var(--green-bg);border-color:var(--green-dim);color:var(--green)}
+.chip-act.on{background:var(--green-bg);border-color:var(--green-line);color:var(--green-ink)}
 
 /* Watchlist alert banner on Home. */
 .banner{display:flex;align-items:center;gap:var(--s3);text-align:left;background:var(--red-bg);
@@ -232,61 +297,65 @@ select{appearance:none;-webkit-appearance:none;background-image:url("data:image/
   font-size:14px;font-weight:500;line-height:1.45;color:var(--fg)}
 .banner.warn{background:var(--amber-bg);border-color:var(--amber-line)}
 .banner-ic{flex-shrink:0;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  background:rgba(245,97,92,.15);color:var(--red)}
-.banner.warn .banner-ic{background:rgba(240,180,41,.15);color:var(--amber)}
+  background:var(--ic-bg);color:var(--red)}
+.banner.warn .banner-ic{background:var(--ic-bg);color:var(--amber)}
 .banner-ic svg{width:18px;height:18px}
 .banner .chev{margin-left:auto;flex-shrink:0;color:var(--dim)}
 
 /* Recall-browser teaser card on Home. */
-.teaser{display:flex;align-items:center;gap:var(--s3);text-align:left;background:var(--card);
-  border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s4);margin-top:var(--s5);
-  font-size:14px;font-weight:500;color:var(--fg)}
-.teaser .t-num{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:var(--green);flex-shrink:0;min-width:34px;text-align:center}
-.teaser .t-sub{display:block;font-size:12px;color:var(--dim-2);font-weight:400;margin-top:2px}
+.teaser{display:flex;align-items:center;gap:var(--s4);text-align:left;background:var(--card);box-shadow:var(--shadow);
+  border:1px solid var(--line);border-radius:var(--r-lg);padding:var(--s4) 18px;margin-top:var(--s4);
+  font-size:14px;font-weight:600;color:var(--fg)}
+.teaser .t-num{font-family:'Plus Jakarta Sans',sans-serif;font-size:30px;font-weight:800;color:var(--green-ink);flex-shrink:0;min-width:34px;text-align:center;letter-spacing:-.03em;line-height:1}
+.teaser .t-sub{display:block;font-size:12.5px;color:var(--dim-2);font-weight:500;margin-top:2px}
 .teaser .chev{margin-left:auto;flex-shrink:0;color:var(--dim)}
 
 /* Recall browser rows — native <details> for free accessibility. */
-.recd{border-top:1px solid var(--line-soft)}
-.recd:first-of-type{border-top:0}
-.recd summary{list-style:none;cursor:pointer;padding:var(--s4) var(--s2);border-radius:var(--r-sm);min-height:44px}
+.recd{background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);
+  margin-top:var(--s2);box-shadow:var(--shadow)}
+.recd summary{list-style:none;cursor:pointer;padding:var(--s4);border-radius:var(--r-md);min-height:44px}
 .recd summary::-webkit-details-marker{display:none}
-.recd summary:active{background:var(--card)}
-@media (hover:hover){.recd summary:hover{background:var(--card)}}
+.recd summary:active{background:var(--card-2)}
+@media (hover:hover){.recd:hover{border-color:var(--green-line)}}
 .recd-top{display:flex;align-items:center;gap:var(--s2);margin-bottom:6px}
 .recd-date{font-size:12px;color:var(--dim-2)}
 .recd-firm{display:block;font-size:15px;font-weight:600;line-height:1.4;overflow-wrap:anywhere}
 .recd-why{display:block;font-size:13px;color:var(--dim);line-height:1.5;margin-top:2px;overflow-wrap:anywhere}
-.recd[open] summary{background:var(--card);border-radius:var(--r-sm) var(--r-sm) 0 0}
-.recd-body{padding:0 var(--s2) var(--s3)}
+.recd[open] summary{border-bottom:1px solid var(--line-soft);border-radius:var(--r-md) var(--r-md) 0 0}
+.recd-body{padding:0 var(--s4) var(--s4)}
+.recd-body .card{border:0;box-shadow:none;padding:var(--s4) 0 0;background:transparent}
 
 /* Batch (pantry check) strip on the scan screen. */
 .batchbar{margin-top:var(--s4)}
 .batch-list{display:flex;flex-direction:column;gap:var(--s2);margin-bottom:var(--s3)}
 .batch-item{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);
-  background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s3) var(--s4);font-size:14px}
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s3) var(--s4);font-size:14px;box-shadow:var(--shadow)}
 .batch-item .spin{width:16px;height:16px;border-width:2px;margin:0}
 .stat-row{display:flex;gap:var(--s2);margin:var(--s4) 0}
-.stat{flex:1;background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s3);text-align:center}
-.stat .n{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700}
+.stat{flex:1;background:var(--card);border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s3);text-align:center;box-shadow:var(--shadow)}
+.stat .n{font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;font-weight:700}
 .stat .k{font-size:11px;color:var(--dim-2);text-transform:uppercase;letter-spacing:.05em;font-weight:700;margin-top:2px}
 .stat.bad .n{color:var(--red)}.stat.ok .n{color:var(--green)}.stat.warn .n{color:var(--amber)}
 
 /* Bottom tab bar — top-level screens only. */
 .tabbar{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:center;
-  background:rgba(11,31,22,.92);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  background:var(--scrim);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
   border-top:1px solid var(--line-soft);padding:6px 0 calc(6px + env(safe-area-inset-bottom))}
 .tabbar-inner{display:flex;width:100%;max-width:480px}
 .tabbar button{flex:1;min-height:52px;padding:6px 2px;border-radius:var(--r-sm);display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:3px;font-size:10.5px;font-weight:600;letter-spacing:.02em;color:var(--dim-2)}
 .tabbar button svg{width:21px;height:21px}
-.tabbar button.active{color:var(--green)}
-.tabbar button:active{transform:none;background:var(--card)}
+.tabbar button .tico{width:40px;height:28px;border-radius:var(--r-pill);display:flex;
+  align-items:center;justify-content:center;transition:background .15s ease}
+.tabbar button.active{color:var(--green-ink)}
+.tabbar button.active .tico{background:var(--green-bg)}
+.tabbar button:active{transform:none}
 .tabspace{height:calc(var(--tabbar-h) + env(safe-area-inset-bottom))}
 
 /* Empty states. */
 .empty{text-align:center;padding:var(--s8) var(--s5)}
-.empty .e-ic{width:56px;height:56px;margin:0 auto var(--s4);border-radius:50%;background:var(--card);
-  border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--dim)}
+.empty .e-ic{width:60px;height:60px;margin:0 auto var(--s4);border-radius:50%;background:var(--card);box-shadow:var(--shadow);
+  border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--green-ink)}
 .empty .e-ic svg{width:26px;height:26px}
 .empty h2{font-size:19px}
 .empty p{margin-top:var(--s2);font-size:14px;color:var(--dim);line-height:1.55;max-width:34ch;margin-left:auto;margin-right:auto}
@@ -296,11 +365,11 @@ dialog#about{border:0;padding:0;background:transparent;color:var(--fg);
   width:min(460px,calc(100vw - 24px));max-width:100%;
   /* the `*` reset above zeroes the UA's margin:auto, which is what centres a modal dialog */
   margin:auto}
-dialog#about::backdrop{background:rgba(4,14,10,.74)}
-.sheet{background:var(--card);border:1px solid var(--line);border-radius:var(--r-xl);
+dialog#about::backdrop{background:var(--backdrop)}
+.sheet{background:var(--card);border:1px solid var(--line);border-radius:var(--r-xl);box-shadow:var(--shadow-lg);
   padding:var(--s6);max-height:82dvh;overflow:auto;text-align:left}
 .sheet-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--s3);margin-bottom:var(--s4)}
-.sheet h3{margin-top:var(--s5);margin-bottom:var(--s2);color:var(--green)}
+.sheet h3{margin-top:var(--s5);margin-bottom:var(--s2);color:var(--green-ink)}
 .sheet p{font-size:14px;line-height:1.6;color:var(--dim)}
 .sheet .list{font-size:14px}
 
@@ -308,11 +377,11 @@ dialog#about::backdrop{background:rgba(4,14,10,.74)}
 #toast{position:fixed;left:50%;transform:translateX(-50%) translateY(140%);
   bottom:calc(var(--tabbar-h) + var(--s4) + env(safe-area-inset-bottom));z-index:50;width:min(440px,calc(100vw - 32px));
   background:var(--card-2);border:1px solid var(--line);border-radius:var(--r-md);padding:var(--s3) var(--s4);
-  box-shadow:0 12px 32px -10px rgba(0,0,0,.6);display:flex;align-items:center;gap:var(--s3);
+  box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:var(--s3);
   font-size:14px;transition:transform .25s cubic-bezier(.4,0,.2,1),opacity .25s;opacity:0;pointer-events:none}
 #toast.show{transform:translateX(-50%) translateY(0);opacity:1;pointer-events:auto}
 #toast .t-msg{flex:1;min-width:0;line-height:1.4;overflow-wrap:anywhere}
-#toast button{width:auto;min-height:40px;padding:var(--s2) var(--s3);font-size:14px;background:none;color:var(--green);border-radius:var(--r-sm)}
+#toast button{width:auto;min-height:40px;padding:var(--s2) var(--s3);font-size:14px;background:none;color:var(--green-ink);border-radius:var(--r-sm)}
 
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
@@ -654,6 +723,8 @@ function mergeProduct(off, fdc, code) {
 }
 
 /* ---------- personal flags: allergens + avoid list ---------- */
+const ALLERGEN_EMOJI = { milk:"🥛", egg:"🥚", peanut:"🥜", treenut:"🌰", soy:"🫘",
+  wheat:"🌾", fish:"🐟", shellfish:"🦐", sesame:"🫓" };
 const ALLERGENS = [
   { id: "milk", name: "Milk / dairy", terms: ["milk", "whey", "casein", "caseinate", "butter", "cream", "lactose", "ghee", "yogurt", "cheese", "custard"] },
   { id: "egg", name: "Egg", terms: ["egg", "eggs", "albumin", "albumen", "ovalbumin", "mayonnaise", "meringue"] },
@@ -807,7 +878,8 @@ function show(r) {
     const nm = (r.product && r.product.name) || r.code;
     const st = r.state === "recalled" ? (r.tier === "strong" ? "recalled" : "possible") : r.state;
     const codeVal = r.nameSearch ? null : r.code;
-    recent = [{ name: nm, state: st, at: Date.now(), code: codeVal }]
+    recent = [{ name: nm, state: st, at: Date.now(), code: codeVal,
+      brand: (r.product && r.product.brand) || "", img: (r.product && r.product.image) || "" }]
       .concat(recent.filter(h => h && h.name !== nm))
       .slice(0, 8);
     store.set(HIST_KEY, recent);
@@ -863,6 +935,53 @@ function verdictRing(kind) {
   </div></div>`;
 }
 
+/* Thumbnails for list rows: the product photo when a source gave us one,
+   otherwise a food emoji guessed from the name. Decorative only. */
+const EMOJI = [
+  [/spinach|lettuce|kale|salad|greens|arugula/, "🥬"], [/cheese/, "🧀"], [/yogurt|yoghurt/, "🥣"],
+  [/milk|cream|dairy|butter/, "🥛"], [/bread|bagel|bun|tortilla|muffin|roll/, "🍞"],
+  [/chicken|poultry|turkey/, "🍗"], [/beef|steak|burger|meatball/, "🥩"],
+  [/pork|bacon|ham|sausage|salami/, "🥓"], [/fish|salmon|tuna|cod|tilapia|sardine/, "🐟"],
+  [/shrimp|prawn|crab|lobster|clam|oyster|scallop/, "🦐"], [/egg/, "🥚"],
+  [/peanut|almond|cashew|walnut|pecan|pistachio|nut/, "🥜"],
+  [/strawberr|berry|berries|raspberr|blueberr/, "🍓"], [/apple/, "🍎"], [/banana/, "🍌"],
+  [/grape/, "🍇"], [/orange|citrus|lemon|lime/, "🍊"], [/melon/, "🍉"],
+  [/tomato|salsa|marinara|ketchup/, "🥫"], [/potato|fries|chips|crisps/, "🥔"],
+  [/corn|popcorn/, "🌽"], [/rice|quinoa|grain/, "🍚"], [/pasta|noodle|spaghetti|macaroni/, "🍝"],
+  [/soup|broth|stew|chili/, "🍲"], [/cereal|granola|oat|muesli/, "🥣"],
+  [/cookie|biscuit|brownie|cracker/, "🍪"], [/cake|pie|pastry|dessert/, "🍰"],
+  [/chocolate|candy|sweets|gummy/, "🍫"], [/ice cream|gelato|frozen/, "🍦"],
+  [/juice|soda|drink|beverage|water|smoothie/, "🥤"], [/coffee|espresso|latte/, "☕"], [/tea/, "🍵"],
+  [/honey|syrup|jam|jelly|preserve/, "🍯"], [/oil|vinegar|dressing|sauce|mayo/, "🫒"],
+  [/bean|lentil|chickpea|hummus|tofu/, "🫘"], [/mushroom/, "🍄"], [/carrot/, "🥕"],
+  [/broccoli/, "🥦"], [/pepper/, "🫑"], [/onion|garlic/, "🧅"], [/avocado|guacamole/, "🥑"],
+  [/pizza/, "🍕"], [/salt|spice|season|herb/, "🧂"]
+];
+function emojiFor(name, brand) {
+  const t = `${name || ""} ${brand || ""}`.toLowerCase();
+  for (const [re, e] of EMOJI) if (re.test(t)) return e;
+  return "🛒";
+}
+function thumbHtml(item) {
+  const em = emojiFor(item.name, item.brand);
+  // If the image 404s or the host blocks it, swap the node back to the emoji.
+  return item && item.img
+    ? `<span class="thumb"><img src="${esc(item.img)}" alt="" loading="lazy" decoding="async"
+         onerror="this.parentNode.textContent='${em}'"></span>`
+    : `<span class="thumb" aria-hidden="true">${em}</span>`;
+}
+
+/* "2m ago" / "3h ago" / "Yesterday" for list-row subtitles. */
+function relTime(ms) {
+  if (!ms) return "";
+  const d = Date.now() - ms;
+  if (d < 6e4) return "just now";
+  if (d < 36e5) return `${Math.round(d / 6e4)}m ago`;
+  if (d < 864e5) return `${Math.round(d / 36e5)}h ago`;
+  if (d < 1728e5) return "yesterday";
+  return `${Math.round(d / 864e5)}d ago`;
+}
+
 function brandMark() {
   // Lettuce leaf with barcode-style veins and a verdict checkmark.
   return `<svg class="brand-mark" viewBox="0 0 200 200" fill="none" aria-hidden="true" focusable="false">
@@ -896,9 +1015,9 @@ function sourceTags(extra) {
     `<span class="tag ${recallIndex.usda ? "up" : "down"}">USDA ${recallIndex.usda ? "loaded" : "unavailable"}</span>`
   ];
   if (extra) tags.push(extra);
-  else tags.push(`<span class="tag">${n} ${n === 1 ? "recall" : "recalls"} &middot; ${age}</span>`);
-  tags.push(`<button class="linkish" data-act="refresh" title="Refresh recall data"
-    aria-label="Refresh recall data">${iconSpan(ICONS.refresh, 14)}</button>`);
+  else tags.push(`<button class="tag" data-act="refresh" title="Refresh recall data"
+    aria-label="${n} ${n === 1 ? "recall" : "recalls"} loaded ${age}. Refresh recall data.">${
+    n} ${n === 1 ? "recall" : "recalls"} &middot; ${age} ${iconSpan(ICONS.refresh, 12)}</button>`);
   const warn = both ? "" : `<p class="mini" style="text-align:center">${
     recallIndex.fda || recallIndex.usda
       ? "One source didn't respond, so results are partial."
@@ -916,7 +1035,7 @@ function tabbar(active) {
   ];
   return `<nav class="tabbar" aria-label="Main"><div class="tabbar-inner">${items.map(([path, label, ic]) =>
     `<button class="${path === active ? "active" : ""}" data-act="nav" data-arg="${path}"
-      ${path === active ? 'aria-current="page"' : ""}>${ic}<span>${label}</span></button>`).join("")}
+      ${path === active ? 'aria-current="page"' : ""}><span class="tico">${ic}</span><span>${label}</span></button>`).join("")}
   </div></nav><div class="tabspace"></div>`;
 }
 
@@ -961,12 +1080,17 @@ function homeView() {
       <h2 id="recent-h" class="label" style="font-family:Inter,sans-serif">Recent checks</h2>
       ${recent.map(x => x.code
         ? `<button class="hist" data-act="recheck" data-arg="${esc(x.code)}">
-             <span class="hist-name">${esc(x.name)}</span>${pillFor(x.state)}
+             ${thumbHtml(x)}
+             <span class="hist-main"><span class="hist-name">${esc(x.name)}</span>
+               <span class="hist-sub">${esc([x.brand, relTime(x.at)].filter(Boolean).join(" · "))}</span></span>
+             ${pillFor(x.state)}
            </button>`
         : `<button class="hist" data-act="nav" data-arg="/search/${encodeURIComponent(x.name)}">
-             <span class="hist-name">${esc(x.name)}</span>${pillFor(x.state)}
+             ${thumbHtml(x)}
+             <span class="hist-main"><span class="hist-name">${esc(x.name)}</span>
+               <span class="hist-sub">${esc(relTime(x.at))}</span></span>
+             ${pillFor(x.state)}
            </button>`).join("")}
-      <p class="mini">Tap one to check it again.</p>
     </section>` : "";
   return `
     <div class="topbar"><div class="brand">${brandMark()}<span class="brand-name">Lettuce Know</span></div>
@@ -976,15 +1100,15 @@ function homeView() {
       </div>
     </div>
     <div style="padding-top:var(--s2)">
-      <h1 tabindex="-1">We'll tell you.</h1>
-      <p class="sub">Point the camera at any grocery barcode. We check it against live FDA and USDA recall notices &mdash; and flag ingredients the US and EU disagree on.</p>
+      <h1 tabindex="-1">Scan it.<br>We'll tell you.</h1>
+      <p class="sub">Check any grocery barcode against live FDA and USDA recalls.</p>
     </div>
     ${alertsHtml()}
     <div class="stack" style="margin-top:var(--s6)">
       <button class="primary" data-act="scan">
         <span class="btn-inner">${iconSpan(ICONS.scan, 20)} Scan a barcode</span>
       </button>
-      <button class="ghost" data-act="manual">Type the number instead</button>
+      <button class="ghost" data-act="manual">Enter the number</button>
     </div>
     <div id="srcline">${sourceTags()}</div>
     ${teaserHtml()}
@@ -1004,7 +1128,7 @@ function batchBarHtml() {
     </div>`).join("");
   return `${batch.length ? `<div class="batch-list">${chips}</div>
     <button class="primary" data-act="batch-done">Review ${batch.length} item${batch.length > 1 ? "s" : ""}</button>`
-    : `<p class="mini" style="text-align:center;margin-top:0">Scan several items in a row &mdash; each gets checked as you go.</p>`}`;
+    : `<p class="mini" style="text-align:center;margin-top:0">Scan several items in a row. Each one is checked as you go.</p>`}`;
 }
 
 function scanView() {
@@ -1019,7 +1143,8 @@ function scanView() {
       <div id="reader"><div class="cam-wait"><div class="spin"></div><span>Starting camera&hellip;</span></div></div>
       <div id="torchslot"></div>
     </div>
-    <p class="sub" style="text-align:center;margin-top:var(--s4)">Hold the barcode inside the frame.</p>
+    <p class="sub" style="text-align:center;margin-top:var(--s4);font-weight:600;color:var(--fg)">Line up the barcode</p>
+    <p class="mini" style="text-align:center;margin-top:var(--s1)">It scans on its own &mdash; no button to press.</p>
     <div id="scanerr" role="alert"></div>
     <div id="batchbar" class="batchbar">${batchBarHtml()}</div>
     <div class="stack" style="margin-top:var(--s4)">
@@ -1032,8 +1157,8 @@ function scanView() {
 function manualView() {
   return `
     ${backBar()}
-    <h1 tabindex="-1">Type the barcode</h1>
-    <p class="sub" id="code-hint">It's the number printed under the bars &mdash; usually 12 or 13 digits.</p>
+    <h1 tabindex="-1">Enter the barcode</h1>
+    <p class="sub" id="code-hint">The 12 or 13 digits printed under the bars.</p>
     <form class="stack" style="margin-top:var(--s6)" data-act="submit-manual" novalidate>
       <div>
         <label class="sr-only" for="code">Barcode number</label>
@@ -1051,7 +1176,7 @@ function nameView() {
   return `
     ${backBar()}
     <h1 tabindex="-1">Search by name</h1>
-    <p class="sub" id="nm-hint">Type the brand and product as printed on the package.</p>
+    <p class="sub" id="nm-hint">Brand and product, as printed on the package.</p>
     <form class="stack" style="margin-top:var(--s6)" data-act="submit-name" novalidate>
       <div>
         <label class="sr-only" for="nm">Brand and product name</label>
@@ -1167,22 +1292,22 @@ function resultView(r) {
     const top = list[0] && list[0].rec;
     const q = top ? `${String(top.firm || "").trim()} ${String(top.num || "").trim()}`.trim() : r.code;
     body = `
-      ${verdictRing(strong ? "bad" : "warn")}
       <div class="verdict ${strong ? "v-bad" : "v-warn"}">
+        ${verdictRing(strong ? "bad" : "warn")}
         <div class="v-title">${strong ? "Recalled" : "Possible match"}</div>
         <div class="v-body">${strong
-          ? "This matches an active recall record. Check the lot code and date on your package before assuming it's affected."
-          : "A recall partly matches this product. Compare the covered products below to your package — treat this as a prompt to check, not a confirmation."}</div>
+          ? "This matches an active recall. Check the lot code on your package."
+          : "A recall partly matches this product. Compare the covered products below to your package."}</div>
       </div>
       ${actRow}
       ${list.slice(0, 3).map(recallCard).join("")}
       <div class="card" style="margin-top:var(--s4)">
         <div class="label">What to do</div>
-        <ul class="list">
-          <li>Compare the lot code and best-by date on your package to the covered products above.</li>
-          <li>If it matches, don't eat it — most stores refund recalled items without a receipt.</li>
-          <li>Report a reaction to the FDA at safetyreporting.hhs.gov, or for meat and poultry call USDA at 888-674-6854.</li>
-        </ul>
+        <ol class="list">
+          <li>Match the lot code and best-by date on your package to the covered products above.</li>
+          <li>If it matches, don't eat it — most stores refund without a receipt.</li>
+          <li>Report a reaction to the FDA at safetyreporting.hhs.gov, or call USDA at 888-674-6854 for meat and poultry.</li>
+        </ol>
       </div>
       <div class="stack" style="margin-top:var(--s4)">
         <button class="ghost" data-act="search" data-arg="${esc(q)}">
@@ -1199,12 +1324,12 @@ function resultView(r) {
     const usdaish = isUsdaish(p);
     const gap = !recallIndex.usda && usdaish;
     body = `
-      ${verdictRing(gap ? "warn" : "ok")}
       <div class="verdict ${gap ? "v-warn" : "v-ok"}">
+        ${verdictRing(gap ? "warn" : "ok")}
         <div class="v-title">${gap ? "Partly checked" : "No recall found"}</div>
         <div class="v-body">${gap
-          ? "This looks like meat, poultry, or egg — regulated by the USDA — and that source didn't load. FDA data came back clean, but doesn't cover this kind of product. Treat this as unchecked."
-          : "Nothing in the FDA or USDA recall data matches this product."}</div>
+          ? "This looks like meat, poultry, or egg, and the USDA source didn't load. FDA data came back clean but doesn't cover this kind of product — treat it as unchecked."
+          : "Nothing in today's FDA or USDA data matches this product."}</div>
       </div>
       ${actRow}
       ${sourceTags()}
@@ -1219,17 +1344,17 @@ function resultView(r) {
         <div class="label">Worth knowing</div>
         <ul class="list">
           <li>FDA publishes weekly, so a very recent recall may not be listed yet.</li>
-          <li>Matching works on brand and product names — an unusually named product can be missed.</li>
+          <li>Matching works on brand and product names, so an unusually named product can be missed.</li>
         </ul>
       </div>`;
   }
 
   if (r.state === "nodata") {
     body = `
-      ${verdictRing("warn")}
       <div class="verdict v-warn">
-        <div class="v-title">No data on this product</div>
-        <div class="v-body">This barcode isn't in either product database, so nothing could be checked. That's not a safety signal — we just can't tell.</div>
+        ${verdictRing("warn")}
+        <div class="v-title">Not in either database</div>
+        <div class="v-body">This barcode isn't listed, so there was nothing to check. That's not a safety signal.</div>
       </div>
       <div class="stack" style="margin-top:var(--s4)">
         <button class="primary" data-act="manual-name">Search recalls by name instead</button>
@@ -1242,10 +1367,10 @@ function resultView(r) {
 
   if (r.state === "offline") {
     body = `
-      ${verdictRing("bad")}
       <div class="verdict v-bad">
+        ${verdictRing("bad")}
         <div class="v-title">Couldn't load recall data</div>
-        <div class="v-body">Neither FDA nor USDA responded, so nothing was checked. Usually a weak connection inside a store.</div>
+        <div class="v-body">Neither source responded, so nothing was checked. Usually a weak signal inside a store.</div>
       </div>
       <div class="stack" style="margin-top:var(--s4)">
         <button class="primary" data-act="recheck" data-arg="${esc(r.code)}">Try again</button>
@@ -1286,10 +1411,10 @@ function recallListHtml() {
   if (!recallIndex) return `<p class="mini" style="text-align:center">Loading recall data&hellip;</p>`;
   if (!rows.length) {
     return `<div class="empty"><div class="e-ic">${ICONS.listi}</div>
-      <h2>Nothing matches</h2><p>${recallsQuery ? "No recalls match that search. Try fewer words." : "No recalls loaded from this source right now."}</p></div>`;
+      <h2>Nothing matches</h2><p>${recallsQuery ? "No recalls match that search. Try fewer words." : "Nothing loaded from this source right now."}</p></div>`;
   }
   return `
-    <p class="mini" style="margin:var(--s3) 0 var(--s1)">${rows.length} recall${rows.length > 1 ? "s" : ""}, newest first.</p>
+    <p class="mini" style="margin:var(--s4) 0 var(--s1);font-weight:600">${rows.length.toLocaleString()} recall${rows.length > 1 ? "s" : ""} &middot; newest first</p>
     ${shown.map(r => `<details class="recd"><summary>
       <span class="recd-top"><span class="pill p-dim">${esc(r.src)}</span>
         <span class="recd-date">${fmtDate(r.date)}</span>${clsBadge(r.cls)}</span>
@@ -1303,8 +1428,8 @@ function recallListHtml() {
 function recallsView() {
   return `
     <div class="topbar"><div class="brand">${brandMark()}<span class="brand-name">Lettuce Know</span></div></div>
-    <h1 tabindex="-1">Recent recalls</h1>
-    <p class="sub">Every FDA and USDA recall in the current index &mdash; the same records your scans are checked against.</p>
+    <h1 tabindex="-1">Every recall on file</h1>
+    <p class="sub">The same records your scans are checked against.</p>
     <div class="seg" style="margin-top:var(--s5)" role="group" aria-label="Filter by source">
       <button class="${recallsFilter === "all" ? "active" : ""}" data-act="rfilter" data-arg="all">All</button>
       <button class="${recallsFilter === "FDA" ? "active" : ""}" data-act="rfilter" data-arg="FDA">FDA</button>
@@ -1312,7 +1437,7 @@ function recallsView() {
     </div>
     <div style="margin-top:var(--s3)">
       <label class="sr-only" for="recq">Search recalls</label>
-      <input id="recq" type="search" placeholder="Search by brand, product, or reason" autocomplete="off" value="${esc(recallsQuery)}">
+      <input id="recq" type="search" placeholder="Search brand or product" autocomplete="off" value="${esc(recallsQuery)}">
     </div>
     <div id="reclist">${recallListHtml()}</div>
     ${tabbar("/recalls")}`;
@@ -1329,26 +1454,27 @@ function savedView() {
         : `<span class="pill p-ok">No match</span>`;
       return `<div class="saved-row">
         <button class="hist" data-act="nav" data-arg="/product/${esc(w.code)}">
-          <span style="min-width:0"><span class="hist-name">${esc(w.name)}</span>
-            <span class="hist-sub">Watching since ${new Date(w.addedAt || Date.now()).toLocaleDateString()}</span></span>
+          ${thumbHtml(w)}
+          <span class="hist-main"><span class="hist-name">${esc(w.name)}</span>
+            <span class="hist-sub">${esc(w.brand || "Saved " + new Date(w.addedAt || Date.now()).toLocaleDateString())}</span></span>
           ${pill}
         </button>
         <button class="icon-btn" data-act="unwatch" data-arg="${esc(w.code)}" aria-label="Stop watching ${esc(w.name)}">${iconSpan(ICONS.x, 16)}</button>
       </div>`;
     }).join("")}
-    <p class="mini">Watched products are re-checked against fresh recall data every time it refreshes (about twice a day when you open the app). A match shows up here and as a banner on Home.</p>`
+    <p class="mini">A match shows up here and as a banner on Home. Everything stays on this phone.</p>`
     : `<div class="empty">
       <div class="e-ic">${ICONS.bell}</div>
-      <h2>Nothing watched yet</h2>
-      <p>Scan a product and tap &ldquo;Watch for recalls&rdquo; on its result. If a recall ever matches it, you'll see it here and on Home.</p>
+      <h2>Nothing saved yet</h2>
+      <p>Tap Watch on any result. If a recall ever matches it, you'll hear about it here and on Home.</p>
       <div class="stack" style="margin-top:var(--s5)">
         <button class="primary" data-act="scan"><span class="btn-inner">${iconSpan(ICONS.scan, 18)} Scan a barcode</span></button>
       </div>
     </div>`;
   return `
     <div class="topbar"><div class="brand">${brandMark()}<span class="brand-name">Lettuce Know</span></div></div>
-    <h1 tabindex="-1">Saved</h1>
-    <p class="sub">Products you're watching for future recalls.</p>
+    <h1 tabindex="-1">${watchlist.length ? `Watching ${watchlist.length} product${watchlist.length > 1 ? "s" : ""}` : "Saved"}</h1>
+    <p class="sub">${watchlist.length ? "We re-check these every time recall data refreshes." : "Products you're watching for future recalls."}</p>
     <div style="margin-top:var(--s5)">${body}</div>
     ${tabbar("/saved")}`;
 }
@@ -1364,34 +1490,42 @@ function settingsView() {
       </div>
     </div>
     <h1 tabindex="-1">Settings</h1>
-    <p class="sub">Everything here stays on this device &mdash; nothing is uploaded anywhere.</p>
+    <p class="sub">Stored on this phone only.</p>
 
-    <section class="card" style="margin-top:var(--s5)" aria-labelledby="set-flag-h">
-      <h2 id="set-flag-h" class="label" style="font-family:Inter,sans-serif">Ingredients you avoid</h2>
-      <p class="mini" style="margin-top:0;margin-bottom:var(--s4)">Results get a red flag when a product's ingredient list mentions any of these.</p>
-      <div class="chips" id="allergen-chips">${ALLERGENS.map(a =>
-        `<button class="chip-toggle ${prefs.allergens.includes(a.id) ? "on" : ""}" data-act="allergen" data-arg="${a.id}"
-          aria-pressed="${prefs.allergens.includes(a.id)}">${esc(a.name)}</button>`).join("")}
+    <section style="margin-top:var(--s6)" aria-labelledby="set-flag-h">
+      <h2 id="set-flag-h" class="label" style="font-family:Inter,sans-serif">Your flags</h2>
+      <div class="swlist" id="allergen-chips">${ALLERGENS.map(a => {
+        const on = prefs.allergens.includes(a.id);
+        return `<button class="swrow" data-act="allergen" data-arg="${a.id}" aria-pressed="${on}">
+          <span class="sw-em" aria-hidden="true">${ALLERGEN_EMOJI[a.id] || "•"}</span>
+          <span class="sw-main"><span class="sw-name">${esc(a.name)}</span>
+            <span class="sw-sub">${esc(a.terms.slice(0, 3).join(", "))}</span></span>
+          <span class="sw" aria-hidden="true"></span>
+        </button>`; }).join("")}
       </div>
-      <form data-act="avoid-add" style="display:flex;gap:var(--s2);margin-top:var(--s4)" novalidate>
+      <p class="mini">Flagged on every result. Reads the label text in the product databases &mdash; &ldquo;may contain&rdquo; warnings often aren't in that data, so read the package if you have an allergy.</p>
+    </section>
+
+    <section style="margin-top:var(--s6)" aria-labelledby="set-avoid-h">
+      <h2 id="set-avoid-h" class="label" style="font-family:Inter,sans-serif">Also avoid</h2>
+      <form data-act="avoid-add" style="display:flex;gap:var(--s2)" novalidate>
         <label class="sr-only" for="avin">Add an ingredient to avoid</label>
-        <input id="avin" type="text" maxlength="40" placeholder="Anything else, e.g. red 40" style="flex:1;min-width:0">
+        <input id="avin" type="text" maxlength="40" placeholder="e.g. red 40" style="flex:1;min-width:0">
         <button class="ghost" type="submit" style="width:auto;padding:0 var(--s5)">Add</button>
       </form>
       <div class="chips" id="avlist" style="margin-top:${prefs.avoid.length ? "var(--s3)" : "0"}">${prefs.avoid.map(t =>
         `<button class="chip-x" data-act="avoid-remove" data-arg="${esc(t)}" aria-label="Remove ${esc(t)}">${esc(t)} ${ICONS.x}</button>`).join("")}
       </div>
-      <p class="mini">Checks the label text in the product databases. &ldquo;May contain&rdquo; warnings often aren't in that data &mdash; always read the package if you have an allergy.</p>
     </section>
 
-    <section class="card" style="margin-top:var(--s4)" aria-labelledby="set-state-h">
+    <section style="margin-top:var(--s6)" aria-labelledby="set-state-h">
       <h2 id="set-state-h" class="label" style="font-family:Inter,sans-serif">Your state</h2>
-      <p class="mini" style="margin-top:0;margin-bottom:var(--s4)">Recalls whose distribution list doesn't mention your state get a &ldquo;may not have reached you&rdquo; note and sort lower. Nothing is hidden.</p>
       <label class="sr-only" for="stsel">Your state</label>
       <select id="stsel">${stateOpts}</select>
+      <p class="mini">Recalls that reached your state sort to the top. Nothing is hidden.</p>
     </section>
 
-    <section class="card" style="margin-top:var(--s4)" aria-labelledby="set-data-h">
+    <section style="margin-top:var(--s6)" aria-labelledby="set-data-h">
       <h2 id="set-data-h" class="label" style="font-family:Inter,sans-serif">Data</h2>
       <div id="srcline">${sourceTags()}</div>
       <div class="stack" style="margin-top:var(--s4)">
@@ -1414,14 +1548,15 @@ function batchSummaryView() {
   return `
     ${backBar()}
     <h1 tabindex="-1">Pantry check</h1>
-    <p class="sub">${batch.length} item${batch.length > 1 ? "s" : ""} scanned. Tap any of them for the full result.</p>
+    <p class="sub">${batch.length} item${batch.length > 1 ? "s" : ""} scanned. Tap one for the full result.</p>
     <div class="stat-row">
       <div class="stat bad"><div class="n">${bad}</div><div class="k">Recalled</div></div>
       <div class="stat warn"><div class="n">${warn}</div><div class="k">Check</div></div>
       <div class="stat ok"><div class="n">${ok}</div><div class="k">Clear</div></div>
     </div>
     ${batch.map(b => `<button class="hist" data-act="nav" data-arg="/product/${esc(b.code)}">
-      <span class="hist-name">${esc(b.name || b.code)}</span>
+      ${thumbHtml(b)}
+      <span class="hist-main"><span class="hist-name">${esc(b.name || b.code)}</span></span>
       ${b.status === "checking" ? `<span class="spin" aria-label="Checking"></span>` : pillFor(b.state)}
     </button>`).join("")}
     <div class="stack" style="margin-top:var(--s6)">
@@ -1625,6 +1760,7 @@ function toggleWatch(code) {
     if (!p) return;
     watchlist.unshift({
       code, name: p.name || code, brand: p.brand || "", categories: p.categories || "",
+      img: p.image || "",
       addedAt: Date.now(),
       // Acknowledge whatever the user can already see, so only NEW matches alert.
       ack: recallIndex ? tierFor({ name: p.name, brand: p.brand }) : "none"

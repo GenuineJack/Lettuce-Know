@@ -32,9 +32,17 @@ Hash-based routing (`#/product/<code>`, `#/recalls`, `#/saved`, `#/settings`, `#
 - **Home** — scan/type CTAs, live source status, a recall-count teaser, recent checks, and alert banners when a watched product newly matches a recall.
 - **Recalls** — the full index the scans are checked against, newest first, filterable by source and searchable by brand/product/reason.
 - **Saved** — the watchlist. Watching a product from its result screen re-checks it against every data refresh; a new match raises a Home banner until the user views the result (which acknowledges it).
-- **Settings** — allergen toggles (the 9 major US allergens) plus free-text avoid terms, a state picker (recalls that don't list your state get a "may not have reached you" note and sort lower — never hidden), and data controls. All stored on-device.
+- **Settings** — allergen switches (the 9 major US allergens, each showing the terms it matches) plus free-text avoid terms, a state picker (recalls that don't list your state get a "may not have reached you" note and sort lower — never hidden), and data controls. All stored on-device.
 
 The scan screen adds a pantry-check mode (scan several items in a row, get a summary), scan-from-photo, and a torch toggle on cameras that support it. The manifest declares app shortcuts and a GET share target, so sharing text containing a barcode into the installed PWA jumps straight to that product's result.
+
+## Look and feel
+
+Light by default, with a full dark theme under `prefers-color-scheme: dark` — both are defined as the same set of CSS custom properties on `:root`, so every rule below the token block is theme-agnostic. Two greens are kept separate on purpose: `--green-ink` is the only one allowed to carry text (it clears 4.5:1 on cards, on the page and on the green tint), while `--green` is reserved for fills, focus rings and graphics, where 3:1 is the bar. `--green-fill` is the darker fill the primary button needs to hold white text at 4.5:1. Every foreground/background pair in both themes is verified against WCAG AA — if you change a token, re-check the pair rather than eyeballing it.
+
+Surfaces use soft shadows (`--shadow`, `--shadow-lg`) over hard borders. Headings are Plus Jakarta Sans, body is Inter. The scan screen stays dark in both themes: a light UI around a live camera feed washes out the viewfinder.
+
+List rows show the product photo when a source supplied one, falling back to a food emoji guessed from the product name (`emojiFor()`), so a row never renders as an empty grey square.
 
 ## Before deploying
 
