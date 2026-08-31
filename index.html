@@ -401,23 +401,25 @@ dialog#about::backdrop{background:var(--backdrop)}
       <h2 id="about-h">What this does</h2>
       <button class="icon-btn" data-act="about-close" aria-label="Close">&#10005;</button>
     </div>
-    <p>Scan a food barcode and Lettuce Know checks it against active FDA and USDA recall notices, then flags any ingredients the US and EU regulate differently. Save a product to your watchlist and it gets re-checked every time the recall data refreshes.</p>
+    <p>Scan a grocery barcode. Lettuce Know checks it against live FDA and USDA recalls, then flags ingredients the US and EU regulate differently. Save a product and it gets re-checked every time the data refreshes.</p>
     <h3>Where the data comes from</h3>
     <ul class="list">
-      <li>Recalls: openFDA and USDA FSIS, refreshed every 12 hours.</li>
+      <li>Recalls: openFDA and USDA FSIS, refreshed twice a day.</li>
       <li>Products: Open Food Facts and USDA FoodData Central.</li>
     </ul>
     <h3>What it can't tell you</h3>
-    <p>Recalls are matched on brand and product name, not an exact barcode link &mdash; no public database maps one to the other. So &ldquo;no recall found&rdquo; means nothing matched, not that a product is certified safe. The EU/US notes state what each regulator permits, not a safety score. Ingredient flags read the label text in the product databases &mdash; &ldquo;may contain&rdquo; warnings often aren't in that data, so always read the package if you have an allergy.</p>
+    <p>Recalls are matched on brand and product name, not the barcode &mdash; no public database links the two. So &ldquo;no recall found&rdquo; means nothing matched, not that a product is safe.</p>
+    <p style="margin-top:var(--s4)">The EU/US notes say what each regulator allows. They aren't a safety score.</p>
+    <p style="margin-top:var(--s4)">Ingredient flags read label text from the product databases. &ldquo;May contain&rdquo; warnings often aren't in that data, so read the package if you have an allergy.</p>
     <p style="margin-top:var(--s4)">Always check the lot code and date on your own package before deciding.</p>
     <h3>Spotted a wrong match?</h3>
-    <p>Matching is fuzzy by design, so mistakes are possible &mdash; <a class="src-link" href="mailto:hello@genuinejack.xyz?subject=Lettuce%20Know%20feedback">email what you found</a> and it helps make the matching better.</p>
+    <p>Matching is fuzzy by design, so mistakes happen. <a class="src-link" href="mailto:hello@genuinejack.xyz?subject=Lettuce%20Know%20feedback">Email what you found</a> and it helps make the matching better.</p>
   </div>
 </dialog>
 <noscript>
   <div class="wrap" style="padding-top:40px">
     <h1>Lettuce Know</h1>
-    <p class="sub">This barcode checker needs JavaScript to reach the FDA and USDA recall feeds. Please enable it and reload.</p>
+    <p class="sub">This barcode checker needs JavaScript to reach the FDA and USDA recall feeds. Enable it and reload.</p>
   </div>
 </noscript>
 
@@ -759,7 +761,7 @@ function flagsSection(p) {
   if (!p || !p.ingredientsText) {
     return `<div class="card" style="margin-top:var(--s4)">
       <div class="label">Your flags</div>
-      <p class="mini" style="margin-top:0">No ingredient list is available for this product, so your flagged ingredients couldn't be checked. Read the package if it matters.</p>
+      <p class="mini" style="margin-top:0">No ingredient list for this product, so your flags couldn't be checked. Read the package if it matters.</p>
     </div>`;
   }
   const hits = findFlags(p.ingredientsText);
@@ -1231,13 +1233,13 @@ function divergenceSection(divergence, ingredientSource) {
   if (!ingredientSource) {
     return `<div class="card" style="margin-top:var(--s4)">
       <div class="label">EU / US ingredient check</div>
-      <p class="mini" style="margin-top:0">No ingredient list available for this product from either source, so this can't be checked. Not a signal either way.</p>
+      <p class="mini" style="margin-top:0">No ingredient list from either source, so this couldn't be checked. Not a signal either way.</p>
     </div>`;
   }
   if (!divergence.length) {
     return `<div class="card" style="margin-top:var(--s4)">
       <div class="label">EU / US ingredient check</div>
-      <p class="mini" style="margin-top:0">Nothing on this ingredient list appears on our list of substances treated differently by the FDA and EU. Checked against ingredient data from ${esc(ingredientSource)}.</p>
+      <p class="mini" style="margin-top:0">Nothing on this ingredient list is treated differently by the FDA and EU. Checked against ingredient data from ${esc(ingredientSource)}.</p>
     </div>`;
   }
   return `<section style="margin-top:var(--s4)" aria-labelledby="eu-us-h">
@@ -1253,7 +1255,7 @@ function divergenceSection(divergence, ingredientSource) {
         <p class="mini">${esc(d.note)}</p>
         ${d.source ? `<p class="mini"><a class="src-link" href="${esc(d.source)}" target="_blank" rel="noopener noreferrer">Source ${iconSpan(ICONS.ext, 11)}</a></p>` : ""}
       </div>`).join("")}
-    <p class="mini" style="text-align:center">Regulatory facts, not a safety verdict &mdash; the EU and FDA weigh the same evidence differently. Ingredient data from ${esc(ingredientSource)}.</p>
+    <p class="mini" style="text-align:center">Regulatory facts, not a safety verdict. The EU and FDA weigh the same evidence differently. Ingredient data from ${esc(ingredientSource)}.</p>
   </section>`;
 }
 
@@ -1767,7 +1769,7 @@ function toggleWatch(code) {
     });
     watchlist = watchlist.slice(0, 20);
     saveWatch();
-    toast("Watching — you'll see an alert on Home if a recall ever matches");
+    toast("Watching. You'll see an alert on Home if a recall ever matches");
   }
   if (lastR) render(resultView(lastR));
 }

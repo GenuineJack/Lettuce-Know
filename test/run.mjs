@@ -20,6 +20,7 @@ const MIME = {'.html':'text/html','.js':'text/javascript','.json':'application/j
 const { default: fdcHandler } = await import(ROOT + '/api/fdc.js');
 globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ foods: [] }) });
 
+let DEPLOY_MARKER = null;
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
   if (u.pathname === '/api/fdc') {
@@ -32,6 +33,10 @@ const server = http.createServer(async (req, res) => {
   const p = path.join(ROOT, f);
   if (!p.startsWith(ROOT) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) { res.statusCode=404; return res.end('nf'); }
   res.setHeader('Content-Type', MIME[path.extname(p)] || 'application/octet-stream');
+  // DEPLOY_MARKER lets a test stand in for "a new version was deployed".
+  if (f === '/index.html' && DEPLOY_MARKER) {
+    return res.end(fs.readFileSync(p, 'utf8').replace('<title>Lettuce Know</title>', `<title>${DEPLOY_MARKER}</title>`));
+  }
   res.end(fs.readFileSync(p));
 });
 await new Promise(r => server.listen(8123, r));
@@ -316,6 +321,24 @@ console.log('\n[14] Service worker: offline fallback + shell cache');
   const shell = await page.evaluate(async (name) => {
     const c = await caches.open(name); const k = await c.keys(); return k.map(x=>new URL(x.url).pathname).sort(); }, shellName);
   ok(shell.includes('/index.html') && shell.includes('/eu-us-data.js'), 'app shell precached ['+shell.join(',')+']');
+
+  // A cache-first shell made deploys invisible: the worker answered from cache
+  // without asking the network, so a shipped change only appeared on a later
+  // load, if at all. The shell must be network-first.
+  eq(await page.title(), 'Lettuce Know', 'baseline title before the simulated deploy');
+  DEPLOY_MARKER = 'SHIPPED_BUILD_2';
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(1200);
+  eq(await page.title(), 'SHIPPED_BUILD_2', 'a deploy is picked up on the NEXT load, not a later one');
+
+  // ...and the offline path still works, which is why it was cache-first.
+  await ctx.setOffline(true);
+  await page.reload({ waitUntil: 'load' }).catch(()=>{});
+  await page.waitForTimeout(4000);
+  const offlineH1 = await page.evaluate(() => document.querySelector('h1') && document.querySelector('h1').innerText);
+  ok(/We'll tell you/.test(offlineH1 || ''), 'offline reload still renders the cached shell [got '+JSON.stringify(offlineH1)+']');
+  await ctx.setOffline(false);
+  DEPLOY_MARKER = null;
   await ctx.close();
 }
 
