@@ -51,6 +51,7 @@ List rows show the product photo when a source supplied one, falling back to a f
 - **FDC_API_KEY**: get a free key at https://api.data.gov/signup/ and set it as an environment variable named `FDC_API_KEY` in the Vercel project settings — it is read server-side by `api/fdc.js`, so it never reaches the browser and never goes in git. With no key set, the proxy falls back to `DEMO_KEY` (30 req/hr), so the app still works, just rate-limited. There is no key to edit in `index.html`; it calls `/api/fdc` instead of FoodData Central directly, and a failed lookup degrades to Open Food Facts as before.
 - **USDA FSIS CORS**: the FSIS recall API blocked at least one direct fetch attempt during development (bot detection). If the "USDA" status tag on the home screen shows red/unavailable after deploying, switch on the included proxy: set `const PROXY = "/api/recalls";` near the top of `index.html`. The proxy in `api/recalls.js` is written for Vercel's serverless function format.
 - **HTTPS required for camera**: barcode scanning needs `https://` — won't work from a local `file://` open. Test on the deployed URL, not locally, if checking camera behavior.
+- **EU/US watch page**: `eu-us-watch.html` is a standalone static page (crawlable by social link previews and search engines, unlike the hash-routed app) listing every entry in `eu-us-data.js`. After editing that data, run `node scripts/build-eu-us-page.mjs` to regenerate it, and commit the regenerated file.
 
 ## Tests
 
