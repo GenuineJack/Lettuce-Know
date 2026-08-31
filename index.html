@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#F4F8F4" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#0b1f16" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#F4F8F4">
 <meta name="color-scheme" content="light dark">
 <meta name="description" content="Scan a grocery barcode to check live FDA and USDA recalls, watch products for new recalls, and flag ingredients the US and EU regulate differently.">
 <link rel="manifest" href="manifest.webmanifest">
@@ -22,9 +21,12 @@
 <script src="eu-us-data.js"></script>
 <style>
 /* ---------------------------------------------------------------
-   Light is the default. The dark block below restores the original
-   palette for prefers-color-scheme:dark — same token names, so every
-   rule downstream is theme-agnostic.
+   Light is the default. The dark block below restores the original palette
+   under [data-theme="dark"] — same token names, so every rule downstream is
+   theme-agnostic. The attribute is set before first paint by the script in
+   <head>, from the user's stored choice: light (default), dark, or system.
+   Keying off the attribute rather than prefers-color-scheme directly is what
+   lets someone on a dark-mode device still choose the light theme.
    --------------------------------------------------------------- */
 :root{
   --bg:#F4F8F4; --bg-2:#EDF3EE; --card:#FFFFFF; --card-2:#F7FAF7;
@@ -50,8 +52,7 @@
   --tabbar-h:64px;
   font-size:16px;
 }
-@media (prefers-color-scheme:dark){
-  :root{
+:root[data-theme="dark"]{
     --bg:#0b1f16; --bg-2:#0f261b; --card:#123122; --card-2:#16392a;
     --line:#1e4632; --line-soft:#173a29;
     --fg:#eef7f0; --dim:#9cb8a7; --dim-2:#8fac9a;
@@ -66,7 +67,6 @@
     --glow:rgba(74,222,128,.40);
     --shadow:0 1px 2px rgba(0,0,0,.20), 0 10px 28px -14px rgba(0,0,0,.55);
     --shadow-lg:0 2px 4px rgba(0,0,0,.25), 0 18px 40px -18px rgba(0,0,0,.65);
-  }
 }
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%}
@@ -388,6 +388,24 @@ dialog#about::backdrop{background:var(--backdrop)}
   .ring > svg circle{stroke-dashoffset:0}
 }
 </style>
+<script>
+/* Resolve the theme before first paint, so a dark-mode device doesn't flash
+   light (or vice versa). Light is the default: following the OS is opt-in,
+   not the fallback. Kept inline and tiny on purpose — it must run before the
+   body renders, and it duplicates only the two colours it needs. */
+(function () {
+  var pref = "light";
+  try {
+    var raw = localStorage.getItem("rc_theme_v1");
+    if (raw != null) { var v = JSON.parse(raw); if (v === "dark" || v === "system") pref = v; }
+  } catch (e) {}
+  var dark = pref === "dark" || (pref === "system" &&
+    window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+  var m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.setAttribute("content", dark ? "#0b1f16" : "#F4F8F4");
+})();
+</script>
 </head>
 <body>
 <a class="sr-only" href="#app">Skip to content</a>
@@ -483,6 +501,31 @@ if (!prefs || typeof prefs !== "object" || Array.isArray(prefs)) prefs = {};
 prefs.allergens = Array.isArray(prefs.allergens) ? prefs.allergens : [];
 prefs.avoid = Array.isArray(prefs.avoid) ? prefs.avoid : [];
 prefs.state = typeof prefs.state === "string" ? prefs.state : "";
+/* Appearance is stored separately from prefs so the pre-paint script in <head>
+   can read it with one getItem, before any of this file has run. */
+const THEME_KEY = "rc_theme_v1";
+const THEMES = ["light", "dark", "system"];
+let theme = store.get(THEME_KEY, "light");
+if (!THEMES.includes(theme)) theme = "light";
+const darkMQ = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+const themeIsDark = () => theme === "dark" || (theme === "system" && !!darkMQ && darkMQ.matches);
+function applyTheme() {
+  const dark = themeIsDark();
+  document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+  const m = document.querySelector('meta[name="theme-color"]');
+  if (m) m.setAttribute("content", dark ? "#0b1f16" : "#F4F8F4");
+}
+function setTheme(v) {
+  if (!THEMES.includes(v)) return;
+  theme = v;
+  store.set(THEME_KEY, v);
+  applyTheme();
+  render(settingsView());
+  toast(v === "system" ? "Following your device setting" : v === "dark" ? "Dark theme on" : "Light theme on");
+}
+// Only track the OS while the user has actually asked us to.
+if (darkMQ && darkMQ.addEventListener) darkMQ.addEventListener("change", () => { if (theme === "system") applyTheme(); });
+
 const savePrefs = () => store.set(PREFS_KEY, prefs);
 const saveWatch = () => store.set(WATCH_KEY, watchlist);
 
@@ -1494,6 +1537,15 @@ function settingsView() {
     <h1 tabindex="-1">Settings</h1>
     <p class="sub">Stored on this phone only.</p>
 
+    <section style="margin-top:var(--s6)" aria-labelledby="set-theme-h">
+      <h2 id="set-theme-h" class="label" style="font-family:Inter,sans-serif">Appearance</h2>
+      <div class="seg" role="group" aria-label="Appearance">
+        ${THEMES.map(t => `<button class="${theme === t ? "active" : ""}" data-act="theme" data-arg="${t}"
+          aria-pressed="${theme === t}">${t === "system" ? "System" : t === "dark" ? "Dark" : "Light"}</button>`).join("")}
+      </div>
+      <p class="mini">System follows your device's light or dark setting.</p>
+    </section>
+
     <section style="margin-top:var(--s6)" aria-labelledby="set-flag-h">
       <h2 id="set-flag-h" class="label" style="font-family:Inter,sans-serif">Your flags</h2>
       <div class="swlist" id="allergen-chips">${ALLERGENS.map(a => {
@@ -2058,6 +2110,7 @@ const ACTIONS = {
     const list = document.getElementById("reclist");
     if (list) list.innerHTML = recallListHtml();
   },
+  theme: arg => setTheme(arg),
   allergen: (id, el) => toggleAllergen(id, el),
   "avoid-add": avoidAdd,
   "avoid-remove": term => avoidRemove(term),

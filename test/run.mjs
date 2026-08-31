@@ -625,6 +625,45 @@ console.log('\n[27] Scan-from-photo affordance');
   await ctx.close();
 }
 
+console.log('\n[28] Appearance: light is the default even on a dark-mode device');
+{
+  // The regression this guards: the dark palette was applied straight from
+  // prefers-color-scheme, so anyone whose OS was in dark mode could never
+  // reach the light theme, on any browser, with any cache cleared.
+  const { page, ctx } = await newPage(browser, { ctx: { colorScheme: 'dark' } });
+  await page.goto(BASE); await page.waitForTimeout(700);
+  eq(await page.getAttribute('html', 'data-theme'), 'light',
+     'device prefers dark, but the app still defaults to light');
+  eq(await page.evaluate(() => getComputedStyle(document.documentElement)
+       .getPropertyValue('--bg').trim()), '#F4F8F4', 'light tokens are the ones in play');
+  eq(await page.getAttribute('meta[name="theme-color"]', 'content'), '#F4F8F4', 'theme-color follows');
+  await ctx.close();
+}
+{
+  // Choosing dark sticks, and survives a reload without a flash of light.
+  const { page, ctx } = await newPage(browser);
+  await page.goto(BASE + '/#/settings'); await page.waitForTimeout(900);
+  ok(await page.locator('[data-act="theme"]').count() === 3, 'three appearance options offered');
+  await page.click('[data-act="theme"][data-arg="dark"]'); await page.waitForTimeout(400);
+  eq(await page.getAttribute('html', 'data-theme'), 'dark', 'dark applies immediately');
+  eq(await page.evaluate(() => getComputedStyle(document.documentElement)
+       .getPropertyValue('--bg').trim()), '#0b1f16', 'dark tokens are in play');
+  await page.reload(); await page.waitForTimeout(900);
+  eq(await page.getAttribute('html', 'data-theme'), 'dark', 'dark survives a reload');
+  eq(await page.evaluate(() => localStorage.getItem('rc_theme_v1')), '"dark"', 'stored on-device');
+  await ctx.close();
+}
+{
+  // "System" is opt-in, and then it really does follow the device.
+  const { page, ctx } = await newPage(browser, { ctx: { colorScheme: 'dark' } });
+  await page.goto(BASE + '/#/settings'); await page.waitForTimeout(900);
+  await page.click('[data-act="theme"][data-arg="system"]'); await page.waitForTimeout(400);
+  eq(await page.getAttribute('html', 'data-theme'), 'dark', 'system on a dark device resolves dark');
+  await page.emulateMedia({ colorScheme: 'light' }); await page.waitForTimeout(300);
+  eq(await page.getAttribute('html', 'data-theme'), 'light', 'and follows the device when it changes');
+  await ctx.close();
+}
+
 await browser.close(); server.close();
 console.log(`\n${'='.repeat(46)}\n  ${pass} passed, ${fail} failed\n${'='.repeat(46)}`);
 process.exit(fail ? 1 : 0);
