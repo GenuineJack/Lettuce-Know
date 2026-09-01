@@ -86,6 +86,9 @@ async function newPage(browser, opts = {}) {
     body: JSON.stringify({ foods: [] }) }));
   await page.route(/cdnjs\.cloudflare\.com/, r => r.fulfill({ status:200, contentType:'text/javascript', body:'' }));
   await page.route(/fonts\.googleapis\.com|fonts\.gstatic\.com/, r => r.fulfill({ status:200, contentType:'text/css', body:'' }));
+  // GA (gtag.js) — no egress in this sandbox; stub the loader script and let
+  // the app's own `gtag` shim (window.dataLayer.push) queue events into it.
+  await page.route(/googletagmanager\.com/, r => r.fulfill({ status:200, contentType:'text/javascript', body:'' }));
   return { page, ctx, errs };
 }
 
