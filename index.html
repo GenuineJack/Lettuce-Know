@@ -471,6 +471,11 @@ const WINDOW_DAYS = 400;
 const MAX_ROWS = 4000;                     // hard cap so a bad feed can't blow out localStorage
 const TIMEOUT = 15000;
 
+// Fire-and-forget GA4 event; never let analytics break the app (blockers, missing gtag, etc).
+function track(name, params) {
+  try { if (typeof gtag === "function") gtag("event", name, params || {}); } catch (e) {}
+}
+
 let scanner = null;
 let scannerLib = null;
 let recallIndex = null;
@@ -927,6 +932,11 @@ function watchAlerts() {
 
 function show(r) {
   lastR = r;
+  track("view_result", {
+    result_state: r.state,
+    result_tier: r.tier || "",
+    lookup_method: r.nameSearch ? "name" : "barcode"
+  });
   if (["recalled", "clear", "nodata"].includes(r.state)) {
     const nm = (r.product && r.product.name) || r.code;
     const st = r.state === "recalled" ? (r.tier === "strong" ? "recalled" : "possible") : r.state;
@@ -1793,6 +1803,7 @@ function submitManual(_arg, form) {
   }
   if (input) input.removeAttribute("aria-invalid");
   if (box) box.innerHTML = "";
+  track("manual_barcode_entry");
   navigate("/product/" + v);
 }
 
@@ -1807,6 +1818,7 @@ function runNameSearch(_arg, form) {
   }
   if (input) input.removeAttribute("aria-invalid");
   if (box) box.innerHTML = "";
+  track("name_search");
   navigate("/search/" + encodeURIComponent(v));
 }
 
@@ -1816,6 +1828,7 @@ function toggleWatch(code) {
   if (i >= 0) {
     watchlist.splice(i, 1);
     saveWatch();
+    track("remove_from_watchlist");
     toast("Removed from your watchlist");
   } else {
     const p = lastR && lastR.product;
@@ -1829,6 +1842,7 @@ function toggleWatch(code) {
     });
     watchlist = watchlist.slice(0, 20);
     saveWatch();
+    track("add_to_watchlist");
     toast("Watching. You'll see an alert on Home if a recall ever matches");
   }
   if (lastR) render(resultView(lastR));
@@ -1837,6 +1851,7 @@ function toggleWatch(code) {
 function unwatch(code) {
   watchlist = watchlist.filter(w => w.code !== code);
   saveWatch();
+  track("remove_from_watchlist");
   render(savedView());
   toast("Removed from your watchlist");
 }
@@ -1844,6 +1859,7 @@ function unwatch(code) {
 async function shareResult(code) {
   const url = location.origin + location.pathname + "#/product/" + code;
   const name = (lastR && lastR.product && lastR.product.name) || "this product";
+  track("share_result");
   if (navigator.share) {
     try { await navigator.share({ title: "Lettuce Know", text: `Recall check for ${name}`, url }); return; }
     catch (e) { if (e && e.name === "AbortError") return; }
@@ -1891,6 +1907,7 @@ function onScanDecode(text) {
   const code = String(text).replace(/\D/g, "");
   if (!code) return;
   if (navigator.vibrate) { try { navigator.vibrate(30); } catch (e) {} }
+  track("scan_barcode", { scan_method: "camera", batch_mode: batchMode });
   if (batchMode) addToBatch(code);
   else navigate("/product/" + code);
 }
@@ -2008,6 +2025,7 @@ async function scanFromPhoto(file) {
     const code = String(text || "").replace(/\D/g, "");
     if (!code) throw new Error("no-code");
     if (t !== token) return;
+    track("scan_barcode", { scan_method: "photo", batch_mode: batchMode });
     if (batchMode) { addToBatch(code); startCamera(t); }
     else navigate("/product/" + code);
   } catch (e) {
