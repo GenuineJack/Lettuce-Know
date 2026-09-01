@@ -14,6 +14,15 @@
 <meta name="theme-color" content="#F4F8F4">
 <meta name="color-scheme" content="light dark">
 <meta name="description" content="Scan a grocery barcode to check live FDA and USDA recalls, watch products for new recalls, and flag ingredients the US and EU regulate differently.">
+<meta property="og:title" content="Lettuce Know">
+<meta property="og:description" content="Scan a grocery barcode to check live FDA and USDA recalls, watch products for new recalls, and flag ingredients the US and EU regulate differently.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://www.lettuce-know.info/">
+<meta property="og:image" content="https://www.lettuce-know.info/icons/icon-512.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Lettuce Know">
+<meta name="twitter:description" content="Scan a grocery barcode to check live FDA and USDA recalls, watch products for new recalls, and flag ingredients the US and EU regulate differently.">
+<meta name="twitter:image" content="https://www.lettuce-know.info/icons/icon-512.png">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -440,6 +449,8 @@ dialog#about::backdrop{background:var(--backdrop)}
     <p style="margin-top:var(--s4)">Always check the lot code and date on your own package before deciding.</p>
     <h3>Spotted a wrong match?</h3>
     <p>Matching is fuzzy by design, so mistakes happen. <a class="src-link" href="mailto:hello@genuinejack.xyz?subject=Lettuce%20Know%20feedback">Email what you found</a> and it helps make the matching better.</p>
+    <h3>Your data</h3>
+    <p>There's no account and nothing is tracked. Your watchlist, history, and settings live only in this browser &mdash; the only thing sent anywhere is the barcode itself, to check it against FDA and USDA data.</p>
   </div>
 </dialog>
 <noscript>
@@ -459,6 +470,8 @@ const OFF  = "https://world.openfoodfacts.org/api/v0/product/";
 const FDA  = "https://api.fda.gov/food/enforcement.json";
 const FSIS = "https://www.fsis.usda.gov/fsis/api/recall/v/1";
 const FDC  = "/api/fdc";                   // serverless proxy — holds the FoodData Central key server-side (api/fdc.js)
+const DIVERGENCE_API = "/api/divergence";   // Airtable-backed; eu-us-data.js is the fallback if this is unreachable
+const FEEDBACK_API = "/api/feedback";       // Airtable-backed "report a problem" endpoint (api/feedback.js)
 const QR_LIB = "https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js";
 const FEEDBACK = "mailto:hello@genuinejack.xyz?subject=Lettuce%20Know%20feedback";
 
@@ -466,7 +479,10 @@ const CACHE_KEY = "rc_index_v3";
 const HIST_KEY = "rc_history";
 const WATCH_KEY = "rc_watch_v1";
 const PREFS_KEY = "rc_prefs_v1";
+const DIVERGENCE_KEY = "rc_divergence_v1";
+const NOTIFY_KEY = "rc_notify_v1";          // user opted in to watchlist push notifications
 const CACHE_TTL = 12 * 60 * 60 * 1000;
+const DIVERGENCE_TTL = 6 * 60 * 60 * 1000;  // shorter than recall TTL — Airtable edits should show up same-day
 const WINDOW_DAYS = 400;
 const MAX_ROWS = 4000;                     // hard cap so a bad feed can't blow out localStorage
 const TIMEOUT = 15000;
@@ -487,6 +503,12 @@ let batchMode = false;
 let recallsFilter = "all";
 let recallsQuery = "";
 let recallsShown = 25;
+let notifyEnabled = false;
+
+function notifySupported() {
+  return "serviceWorker" in navigator && "Notification" in window &&
+    typeof ServiceWorkerRegistration !== "undefined" && "periodicSync" in ServiceWorkerRegistration.prototype;
+}
 const app = document.getElementById("app");
 
 /* ---------- storage: never let corrupt or full storage kill the app ---------- */
@@ -514,6 +536,7 @@ if (!prefs || typeof prefs !== "object" || Array.isArray(prefs)) prefs = {};
 prefs.allergens = Array.isArray(prefs.allergens) ? prefs.allergens : [];
 prefs.avoid = Array.isArray(prefs.avoid) ? prefs.avoid : [];
 prefs.state = typeof prefs.state === "string" ? prefs.state : "";
+notifyEnabled = store.get(NOTIFY_KEY, false) === true;
 /* Appearance is stored separately from prefs so the pre-paint script in <head>
    can read it with one getItem, before any of this file has run. */
 const THEME_KEY = "rc_theme_v1";
@@ -540,7 +563,7 @@ function setTheme(v) {
 if (darkMQ && darkMQ.addEventListener) darkMQ.addEventListener("change", () => { if (theme === "system") applyTheme(); });
 
 const savePrefs = () => store.set(PREFS_KEY, prefs);
-const saveWatch = () => store.set(WATCH_KEY, watchlist);
+const saveWatch = () => { store.set(WATCH_KEY, watchlist); idbMirrorWatchlist(); };
 
 const esc = s => String(s == null ? "" : s)
   .replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -564,6 +587,82 @@ async function fetchWithTimeout(url, ms) {
   const timer = setTimeout(() => ac.abort(), ms || TIMEOUT);
   try { return await fetch(url, { signal: ac.signal }); }
   finally { clearTimeout(timer); }
+}
+
+async function postJson(url, body, ms) {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), ms || TIMEOUT);
+  try {
+    return await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body || {}),
+      signal: ac.signal
+    });
+  } finally { clearTimeout(timer); }
+}
+
+/* Pull the EU/US panel from Airtable so it's editable without a redeploy.
+   EU_US_DIVERGENCE (from eu-us-data.js, loaded synchronously above) is the
+   fallback — mutate its contents in place rather than reassigning, since
+   findDivergence() closes over that exact array reference. Any failure here
+   (offline, Airtable down, endpoint not deployed yet) just leaves the bundled
+   fallback in place; this never blocks or breaks the app. */
+async function refreshDivergence() {
+  try {
+    if (typeof EU_US_DIVERGENCE === "undefined" || !Array.isArray(EU_US_DIVERGENCE)) return;
+    const cached = store.get(DIVERGENCE_KEY, null);
+    if (cached && Array.isArray(cached.rows) && cached.rows.length && typeof cached.at === "number"
+        && Date.now() - cached.at < DIVERGENCE_TTL) {
+      EU_US_DIVERGENCE.length = 0;
+      EU_US_DIVERGENCE.push(...cached.rows);
+      return;
+    }
+    const r = await fetchWithTimeout(DIVERGENCE_API, 8000);
+    if (!r.ok) return;
+    const rows = await r.json();
+    if (!Array.isArray(rows) || !rows.length) return;
+    EU_US_DIVERGENCE.length = 0;
+    EU_US_DIVERGENCE.push(...rows);
+    store.set(DIVERGENCE_KEY, { rows, at: Date.now() });
+  } catch (e) { /* keep whatever eu-us-data.js already loaded */ }
+}
+
+async function reportFeedback(fields) {
+  try {
+    const r = await postJson(FEEDBACK_API, fields, 8000);
+    toast(r.ok ? "Thanks — noted." : "Couldn't send that. Try again later.");
+  } catch (e) { toast("Couldn't send that. Try again later."); }
+}
+
+/* ---------- IndexedDB mirror of the watchlist ----------
+   The service worker needs the watchlist to check it during a periodic
+   background sync, but service workers can't reach localStorage — only the
+   window can. IndexedDB is the one storage both sides can open, so every
+   watchlist save also mirrors here. Best-effort: any failure (private
+   browsing, quota, unsupported) just means periodic-sync notifications won't
+   fire — the in-app banner (already backed by localStorage) still works. */
+function idbOpen() {
+  return new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) { reject(new Error("no indexedDB")); return; }
+    const req = indexedDB.open("lettuce-know", 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore("kv"); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function idbMirrorWatchlist() {
+  try {
+    const db = await idbOpen();
+    await new Promise((resolve, reject) => {
+      const tx = db.transaction("kv", "readwrite");
+      tx.objectStore("kv").put(watchlist, "watchlist");
+      tx.oncomplete = resolve;
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch (e) { /* periodic-sync notifications degrade gracefully without this */ }
 }
 
 /* Word-boundary test shared with eu-us-data.js's matcher; falls back to a
@@ -1165,6 +1264,7 @@ function homeView() {
     <div style="padding-top:var(--s2)">
       <h1 tabindex="-1">Scan it.<br>We'll tell you.</h1>
       <p class="sub">Check any grocery barcode against live FDA and USDA recalls.</p>
+      <p class="mini" style="margin-top:var(--s2)">No account, nothing tracked &mdash; your watchlist and history stay on this phone.</p>
     </div>
     ${alertsHtml()}
     <div class="stack" style="margin-top:var(--s6)">
@@ -1424,6 +1524,7 @@ function resultView(r) {
         <button class="ghost" data-act="search" data-arg="${esc(r.code)}">
           <span class="btn-inner">Search the web for this barcode ${iconSpan(ICONS.ext, 15)}</span>
         </button>
+        <button class="ghost" data-act="report-nodata" data-arg="${esc(r.code)}">Report this product</button>
       </div>`;
     bottomPrimary = false;
   }
@@ -1597,6 +1698,16 @@ function settingsView() {
       <p class="mini">Recalls that reached your state sort to the top. Nothing is hidden.</p>
     </section>
 
+    ${notifySupported() ? `
+    <section style="margin-top:var(--s6)" aria-labelledby="set-notify-h">
+      <h2 id="set-notify-h" class="label" style="font-family:Inter,sans-serif">Notifications</h2>
+      <div class="seg" role="group" aria-label="Watchlist notifications">
+        <button class="${notifyEnabled ? "active" : ""}" data-act="notify" data-arg="on" aria-pressed="${notifyEnabled}">On</button>
+        <button class="${notifyEnabled ? "" : "active"}" data-act="notify" data-arg="off" aria-pressed="${!notifyEnabled}">Off</button>
+      </div>
+      <p class="mini">Best-effort alerts for watched products when the app isn't open. Works on Chrome/Edge installed as an app &mdash; the Home banner is the reliable fallback everywhere else.</p>
+    </section>` : ""}
+
     <section style="margin-top:var(--s6)" aria-labelledby="set-data-h">
       <h2 id="set-data-h" class="label" style="font-family:Inter,sans-serif">Data</h2>
       <div id="srcline">${sourceTags()}</div>
@@ -1604,6 +1715,20 @@ function settingsView() {
         <button class="ghost" data-act="refresh"><span class="btn-inner">${iconSpan(ICONS.refresh, 16)} Refresh recall data</span></button>
         <button class="ghost" data-act="clear-recent">Clear recent checks</button>
       </div>
+    </section>
+
+    <section style="margin-top:var(--s6)" aria-labelledby="set-report-h">
+      <h2 id="set-report-h" class="label" style="font-family:Inter,sans-serif">Report a problem</h2>
+      <form data-act="report-feedback" style="display:flex;gap:var(--s2)" novalidate>
+        <label class="sr-only" for="rpin">Describe the problem</label>
+        <input id="rpin" type="text" maxlength="400" placeholder="Wrong ingredient, missing product&hellip;" style="flex:1;min-width:0">
+        <button class="ghost" type="submit" style="width:auto;padding:0 var(--s5)">Send</button>
+        <div style="position:absolute;left:-9999px" aria-hidden="true">
+          <label for="rphp">Leave this field empty</label>
+          <input id="rphp" type="text" tabindex="-1" autocomplete="off">
+        </div>
+      </form>
+      <p class="mini">Goes straight to the person who built this &mdash; no account needed.</p>
     </section>
 
     <p class="foot">Matching is fuzzy by design &mdash; <a class="src-link" href="${FEEDBACK}">report a wrong result</a> and it helps make it better.</p>
@@ -1854,6 +1979,49 @@ function unwatch(code) {
   track("remove_from_watchlist");
   render(savedView());
   toast("Removed from your watchlist");
+}
+
+function reportSettings(_arg, form) {
+  const input = document.getElementById("rpin");
+  const hp = document.getElementById("rphp");
+  const v = ((input && input.value) || "").trim();
+  if (v.length < 3) { toast("Add a few words first"); return; }
+  reportFeedback({ type: "other", notes: v, website: (hp && hp.value) || "" });
+  if (input) input.value = "";
+}
+
+/* ---------- periodic-sync watchlist notifications (best-effort, feature-detected) ----------
+   Browser support is narrow (Chrome/Edge, installed PWA, site-engagement gated) and the
+   permission prompt can be silently denied by the browser itself, so every step here is
+   wrapped defensively — the Home banner (already reliable, localStorage-backed) is the
+   real fallback everywhere this doesn't work. */
+async function registerWatchlistSync() {
+  try {
+    if (!notifySupported()) return false;
+    const reg = await navigator.serviceWorker.ready;
+    await reg.periodicSync.register("watchlist-check", { minInterval: 12 * 60 * 60 * 1000 });
+    return true;
+  } catch (e) { return false; }
+}
+
+async function notifyToggle(arg) {
+  if (arg === "off") {
+    notifyEnabled = false;
+    store.set(NOTIFY_KEY, false);
+    try { const reg = await navigator.serviceWorker.ready; await reg.periodicSync.unregister("watchlist-check"); } catch (e) {}
+    if (parseHash() === "/settings") render(settingsView());
+    toast("Notifications off");
+    return;
+  }
+  try {
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") { toast("Notifications blocked in your browser settings"); return; }
+  } catch (e) { toast("Couldn't request notification permission"); return; }
+  const ok = await registerWatchlistSync();
+  notifyEnabled = ok;
+  store.set(NOTIFY_KEY, ok);
+  if (parseHash() === "/settings") render(settingsView());
+  toast(ok ? "Notifications on" : "Not supported in this browser right now");
 }
 
 async function shareResult(code) {
@@ -2140,7 +2308,10 @@ const ACTIONS = {
   allergen: (id, el) => toggleAllergen(id, el),
   "avoid-add": avoidAdd,
   "avoid-remove": term => avoidRemove(term),
-  "clear-recent": clearRecent
+  "clear-recent": clearRecent,
+  "report-nodata": code => reportFeedback({ type: "no-data", barcode: code, website: "" }),
+  "report-feedback": reportSettings,
+  "notify": arg => notifyToggle(arg)
 };
 
 document.addEventListener("click", e => {
@@ -2244,6 +2415,8 @@ if ("serviceWorker" in navigator) {
 })();
 
 route();
+refreshDivergence();
+if (notifyEnabled) registerWatchlistSync().then(ok => { if (!ok) { notifyEnabled = false; store.set(NOTIFY_KEY, false); } });
 buildIndex(false)
   .catch(() => { recallIndex = recallIndex || { at: Date.now(), rows: [], fda: false, usda: false }; })
   .then(() => {

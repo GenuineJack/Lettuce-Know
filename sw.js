@@ -103,3 +103,130 @@ self.addEventListener("fetch", e => {
       .catch(() => caches.match(req).then(hit => hit || offlineResponse()))
   );
 });
+
+/* ============================================================
+   Periodic background sync: best-effort watchlist notifications
+   ============================================================
+   Only fires where the browser supports it (Chrome/Edge, installed PWA,
+   site-engagement gated) — index.html feature-detects before registering,
+   so this handler simply does nothing anywhere else.
+
+   The watchlist itself lives in localStorage, which service workers can't
+   reach, so index.html mirrors it into IndexedDB (db "lettuce-know", store
+   "kv", key "watchlist") on every save. Matching here is deliberately
+   coarse — a lowercase word-overlap check, not the full scoring engine the
+   app uses on-screen — because duplicating that engine here would be a
+   second copy to keep in sync. A false positive just sends the user to the
+   app to see the real, precise verdict; it's a nudge, not a claim. */
+
+const FDA_URL = "https://api.fda.gov/food/enforcement.json";
+const FSIS_URL = "https://www.fsis.usda.gov/fsis/api/recall/v/1";
+const NOTIFY_STOP = new Set(["the","and","with","for","from","organic","natural","original","fresh","brand","inc","llc","ltd","co","corp","company","foods","food","products","product"]);
+
+function notifyWords(s) {
+  return [...new Set(String(s || "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/)
+    .filter(w => w.length > 2 && !NOTIFY_STOP.has(w)))];
+}
+
+function idbGet(key) {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open("lettuce-know", 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore("kv"); };
+    req.onsuccess = () => {
+      const db = req.result;
+      const tx = db.transaction("kv", "readonly");
+      const getReq = tx.objectStore("kv").get(key);
+      getReq.onsuccess = () => { resolve(getReq.result); db.close(); };
+      getReq.onerror = () => { reject(getReq.error); db.close(); };
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+function idbSet(key, value) {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open("lettuce-know", 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore("kv"); };
+    req.onsuccess = () => {
+      const db = req.result;
+      const tx = db.transaction("kv", "readwrite");
+      tx.objectStore("kv").put(value, key);
+      tx.oncomplete = () => { resolve(); db.close(); };
+      tx.onerror = () => { reject(tx.error); db.close(); };
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function checkWatchlist() {
+  const watchlist = await idbGet("watchlist").catch(() => null);
+  if (!Array.isArray(watchlist) || !watchlist.length) return;
+
+  const notified = (await idbGet("notified").catch(() => null)) || [];
+  const notifiedSet = new Set(notified);
+
+  let recalls = [];
+  try {
+    const [fda, fsis] = await Promise.allSettled([
+      fetch(`${FDA_URL}?limit=200&sort=report_date:desc`).then(r => r.ok ? r.json() : null),
+      fetch(`${FSIS_URL}?field_archive_recall=0`).then(r => r.ok ? r.json() : null)
+    ]);
+    if (fda.status === "fulfilled" && fda.value && Array.isArray(fda.value.results)) {
+      recalls.push(...fda.value.results.map(x => ({
+        id: "fda:" + (x.recall_number || x.event_id || x.product_description || Math.random()),
+        text: `${x.product_description || ""} ${x.recalling_firm || ""}`.toLowerCase()
+      })));
+    }
+    const fsisRows = fsis.status === "fulfilled" && fsis.value
+      ? (Array.isArray(fsis.value) ? fsis.value : (Array.isArray(fsis.value.results) ? fsis.value.results : []))
+      : [];
+    recalls.push(...fsisRows.map(x => ({
+      id: "fsis:" + (x.field_recall_number || x.field_title || Math.random()),
+      text: `${x.field_product_items || ""} ${x.field_title || ""} ${x.field_establishment || ""}`.toLowerCase()
+    })));
+  } catch (e) { return; }
+
+  if (!recalls.length) return;
+
+  const newlyNotified = [];
+  for (const w of watchlist) {
+    const brandWords = notifyWords(w.brand);
+    const nameWords = notifyWords(w.name);
+    if (!brandWords.length && !nameWords.length) continue;
+    for (const rec of recalls) {
+      if (notifiedSet.has(rec.id)) continue;
+      const brandHit = brandWords.length && brandWords.some(word => rec.text.includes(word));
+      const nameHit = nameWords.filter(word => rec.text.includes(word)).length >= 2;
+      if (brandHit || nameHit) {
+        newlyNotified.push(rec.id);
+        await self.registration.showNotification("Possible recall on your watchlist", {
+          body: `${w.name || w.brand} may match a new FDA/USDA recall — open Lettuce Know to check.`,
+          icon: "/icons/icon-192.png",
+          badge: "/icons/favicon-32.png",
+          tag: "watchlist-" + (w.code || w.name),
+          data: { url: "/#/product/" + (w.code || "") }
+        });
+        break; // one notification per watched item per tick is enough
+      }
+    }
+  }
+  if (newlyNotified.length) {
+    // Cap the dedupe set so it can't grow forever across weeks of ticks.
+    await idbSet("notified", [...notifiedSet, ...newlyNotified].slice(-200));
+  }
+}
+
+self.addEventListener("periodicsync", e => {
+  if (e.tag === "watchlist-check") e.waitUntil(checkWatchlist());
+});
+
+self.addEventListener("notificationclick", e => {
+  e.notification.close();
+  const url = (e.notification.data && e.notification.data.url) || "/";
+  e.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
+      for (const c of list) { if ("focus" in c) return c.focus().then(() => c.navigate ? c.navigate(url) : null); }
+      return self.clients.openWindow(url);
+    })
+  );
+});

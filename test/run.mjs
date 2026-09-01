@@ -14,20 +14,33 @@ const ROOT = path.resolve(new URL('.', import.meta.url).pathname, '..');
 const MIME = {'.html':'text/html','.js':'text/javascript','.json':'application/json',
   '.webmanifest':'application/manifest+json','.png':'image/png','.svg':'image/svg+xml'};
 
-// FDC proxy is emulated here the way Vercel would run api/fdc.js. The real
-// handler runs; only its upstream call is stubbed, since this sandbox has no
-// egress to api.nal.usda.gov.
+// FDC, divergence, and feedback proxies are emulated here the way Vercel
+// would run them. The real handlers run; only the upstream call is stubbed,
+// since this sandbox has no egress to api.nal.usda.gov or airtable.com. The
+// stub's shape covers every caller: FDC reads .foods, divergence reads
+// .records, feedback only checks res.ok — all satisfied by one fake response.
+process.env.AIRTABLE_API_KEY = 'test';
+process.env.AIRTABLE_BASE_ID = 'test';
 const { default: fdcHandler } = await import(ROOT + '/api/fdc.js');
-globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ foods: [] }) });
+const { default: divergenceHandler } = await import(ROOT + '/api/divergence.js');
+const { default: feedbackHandler } = await import(ROOT + '/api/feedback.js');
+globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => ({ foods: [], records: [] }) });
 
 let DEPLOY_MARKER = null;
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, 'http://x');
-  if (u.pathname === '/api/fdc') {
+  if (u.pathname === '/api/fdc' || u.pathname === '/api/divergence' || u.pathname === '/api/feedback') {
     const shim = { setHeader:(k,v)=>res.setHeader(k,v), status(c){res.statusCode=c;return shim},
       json(o){res.setHeader('Content-Type','application/json');res.end(JSON.stringify(o));return shim},
       end(){res.end();return shim} };
-    return fdcHandler({ method:req.method, query:Object.fromEntries(u.searchParams) }, shim);
+    const handler = u.pathname === '/api/fdc' ? fdcHandler : u.pathname === '/api/divergence' ? divergenceHandler : feedbackHandler;
+    let body;
+    if (req.method === 'POST') {
+      const chunks = [];
+      for await (const c of req) chunks.push(c);
+      try { body = JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}'); } catch (e) { body = {}; }
+    }
+    return handler({ method:req.method, query:Object.fromEntries(u.searchParams), body }, shim);
   }
   let f = u.pathname === '/' ? '/index.html' : u.pathname;
   const p = path.join(ROOT, f);
@@ -73,6 +86,9 @@ async function newPage(browser, opts = {}) {
     body: JSON.stringify({ foods: [] }) }));
   await page.route(/cdnjs\.cloudflare\.com/, r => r.fulfill({ status:200, contentType:'text/javascript', body:'' }));
   await page.route(/fonts\.googleapis\.com|fonts\.gstatic\.com/, r => r.fulfill({ status:200, contentType:'text/css', body:'' }));
+  // GA (gtag.js) — no egress in this sandbox; stub the loader script and let
+  // the app's own `gtag` shim (window.dataLayer.push) queue events into it.
+  await page.route(/googletagmanager\.com/, r => r.fulfill({ status:200, contentType:'text/javascript', body:'' }));
   return { page, ctx, errs };
 }
 
