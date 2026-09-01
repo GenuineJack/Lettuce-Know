@@ -8,8 +8,16 @@
  * same substance. Each entry lists the tag fragments and plain-text
  * ingredient-line phrases we check for.
  *
- * Last reviewed: August 2026. Regulatory status changes — recheck
+ * Last reviewed: September 2026. Regulatory status changes — recheck
  * periodically against the sources linked in each entry.
+ *
+ * This file is also the source Airtable's EU_US_Divergence table was
+ * seeded from and should stay reasonably in sync with — the live app reads
+ * from Airtable via api/divergence.js and only falls back to this file if
+ * that's unreachable, but scripts/build-eu-us-page.mjs (the shareable
+ * static page) reads this file directly, not Airtable. Add new entries to
+ * both places, or the static page and the offline fallback will drift from
+ * what's actually live.
  */
 const EU_US_DIVERGENCE = [
   {
@@ -91,6 +99,66 @@ const EU_US_DIVERGENCE = [
     euStatus: "Permitted, but must carry a warning label linking the dye to hyperactivity in children",
     note: "Not a ban — the EU allows these dyes but requires the label \"may have an adverse effect on activity and attention in children,\" following a 2007 UK study (McCann et al., The Lancet). Many manufacturers reformulate for the EU market with natural colorants rather than carry the label. The FDA reviewed the same study and did not require action.",
     source: "https://www.thelancet.com/journals/lancet/article/PIIS0140-6736(07)61306-3/fulltext"
+  },
+  {
+    id: "rbgh-rbst",
+    name: "Recombinant Bovine Growth Hormone (rBGH/rBST)",
+    eNumber: null,
+    matchTags: ["rbgh", "rbst", "recombinant bovine somatotropin", "recombinant bovine growth hormone", "bovine somatotropin", "posilac", "artificial growth hormone", "bgh", "rbst-free", "no artificial growth hormones", "hormone-free milk"],
+    usStatus: "FDA-approved since 1993 for use in dairy cows; no special labeling required, though many processors voluntarily label milk \"rBST-free.\"",
+    euStatus: "Not authorized in any EU member state; prohibited under Directive 2003/74/EC, which bans hormonal growth promoters in livestock.",
+    note: "The FDA's 1993 approval followed its own safety review and has never been revisited; the EU's ban rests officially on animal-welfare grounds (mastitis, reproductive stress) rather than a claimed human-health risk. In practice most major US retailers now source rBST-free milk anyway. Matching note: this won't appear as a positive ingredient — it only shows up via voluntary \"rBST-free\" label claims, an absence signal rather than a presence one.",
+    source: "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=celex%3A32003L0074"
+  },
+  {
+    id: "ractopamine",
+    name: "Ractopamine",
+    eNumber: null,
+    matchTags: ["ractopamine", "ractopamine hydrochloride", "paylean", "optaflexx", "ractopamine-free", "no ractopamine"],
+    usStatus: "FDA-approved as a feed additive for finishing swine and cattle (21 CFR 558.500), used before slaughter to increase leanness.",
+    euStatus: "Not authorized for use in EU livestock production, prohibited as a beta-agonist growth promoter under Directive 96/22/EC; the EU also restricts imports of meat from ractopamine-fed animals.",
+    note: "Ractopamine is banned or restricted in roughly 160 countries, including the EU, China, and Russia, which is why many large US pork processors voluntarily went ractopamine-free starting around 2019-2020 to preserve export access. FDA has denied recent petitions to reconsider its approval. Matching note: as a feed additive it's essentially never listed on a meat product's ingredient panel — a scan would need to key off voluntary \"ractopamine-free\" claims rather than direct disclosure.",
+    source: "https://www.ecfr.gov/current/title-21/chapter-I/subchapter-E/part-558/subpart-B/section-558.500"
+  },
+  {
+    id: "beef-growth-hormones",
+    name: "Growth-Promoting Hormones in Beef Cattle",
+    eNumber: null,
+    matchTags: ["hormone-free beef", "no hormones added", "raised without added hormones", "grass-fed hormone-free", "estradiol", "trenbolone acetate", "zeranol", "melengestrol acetate", "hormone implant", "growth-promoting hormone"],
+    usStatus: "USDA/FDA permit six growth-promoting hormones as ear implants or feed additives in beef cattle; no residue disclosure is required on the label.",
+    euStatus: "Bans all growth-promoting hormones in livestock and prohibits import of meat from hormone-treated animals, in force since 1981 (consolidated into Directive 96/22/EC).",
+    note: "This is the original US/EU meat trade fight — the WTO ruled against the EU's ban as not scientifically justified under trade rules, but the EU kept it anyway, eventually settling by trading a larger EU import quota for certified hormone-free US beef rather than lifting the ban. Same directive family as ractopamine's, covering steroid hormones instead of beta-agonists. Matching note: hormone use isn't a labeled ingredient, so a scan would realistically only catch \"hormone-free\"/\"no hormones added\" claims, common on US beef packaging precisely because of this divergence.",
+    source: "https://www.everycrsreport.com/reports/RS20142.html"
+  },
+  {
+    id: "nitrites-nitrates",
+    name: "Nitrite & Nitrate Curing Agents",
+    eNumber: "E249 / E250 / E251 / E252",
+    matchTags: ["sodium nitrite", "potassium nitrite", "sodium nitrate", "potassium nitrate", "e249", "e250", "e251", "e252", "curing salt", "prague powder"],
+    usStatus: "USDA/FDA permit sodium/potassium nitrite and nitrate as curing agents in meat and poultry, with maximum ingoing levels set by product/cure type (up to 200 ppm nitrite in most cured products).",
+    euStatus: "Permits the same additives but lowered maximum addition levels in 2023 (Regulation (EU) 2023/2108) — e.g. to 80 mg/kg for most cured meat products — phased in from October 2025 through 2027.",
+    note: "Both sides allow the same curing chemistry; the divergence is in the ceiling, not the permission. The EU's 2023 tightening followed EFSA concern that nitrites can form nitrosamines during curing and cooking, compounds IARC links to the same \"processed meat\" classification cited for bacon generally. Because the EU's phase-in runs through 2027, the practical gap is still widening as of 2026 rather than settled.",
+    source: "https://eur-lex.europa.eu/eli/reg/2023/2108/oj"
+  },
+  {
+    id: "carrageenan-infant-formula",
+    name: "Carrageenan in Infant Formula",
+    eNumber: "E407",
+    matchTags: ["carrageenan", "e407", "e407a", "irish moss extract", "processed eucheuma seaweed"],
+    usStatus: "FDA GRAS (21 CFR 172.620) for general food use, including in infant formula, as an emulsifier/stabilizer/thickener.",
+    euStatus: "Permitted as a general-purpose food additive but specifically excluded from use in infant formula and follow-on formula under Regulation (EU) 2016/127.",
+    note: "A narrow, use-specific restriction rather than a blanket ban — carrageenan is fine in ice cream, deli meat, and plant milks on both sides of the Atlantic. The EU's infant-formula-only exclusion is precautionary: some studies raised concerns about carrageenan's effect on an immature infant gut, though mainstream toxicology reviews generally regard it as safe at normal use levels elsewhere in the food supply.",
+    source: "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:02016R0127-20230317"
+  },
+  {
+    id: "partially-hydrogenated-oils",
+    name: "Partially Hydrogenated Oils (Industrial Trans Fat)",
+    eNumber: null,
+    matchTags: ["partially hydrogenated oil", "partially hydrogenated vegetable oil", "partially hydrogenated soybean oil", "pho", "trans fat", "hydrogenated oil"],
+    usStatus: "FDA revoked GRAS status for partially hydrogenated oils in 2015 (compliance required by June 2018); any remaining use now requires premarket approval, which FDA has not granted — effectively an outright ban.",
+    euStatus: "Permits industrially produced trans fat up to a cap of 2g per 100g of fat, under Regulation (EU) 2019/649, effective since April 2021 — a quantitative ceiling rather than a ban.",
+    note: "One of the panel's rarer \"reverse\" cases, like Red No. 3 — the US moved earlier and harder here, eliminating PHOs almost entirely, while the EU opted for a permissive numeric threshold that still allows some industrial trans fat rather than banning the substance itself. A product could legally carry \"partially hydrogenated oil\" on an EU ingredient list today in a way it essentially cannot in the US anymore. Real-world hits will skew toward imported or EU-labeled products.",
+    source: "https://eur-lex.europa.eu/eli/reg/2019/649/oj"
   }
 ];
 

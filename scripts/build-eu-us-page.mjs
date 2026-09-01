@@ -38,8 +38,11 @@ const APP_URL = "https://www.lettuce-know.info/";
 const OG_IMAGE = "https://www.lettuce-know.info/icons/icon-512.png";
 
 const PAGE_TITLE = "Food Additives: Banned in the EU, Legal in the US";
+// Derived from the array, not hardcoded — a hardcoded count silently goes
+// stale the next time an entry is added (as happened here: this said
+// "Eight" after the panel grew to 14).
 const PAGE_DESCRIPTION =
-  "Eight food additives — titanium dioxide, potassium bromate, BHA and more — with a documented difference in US and EU regulatory status. Sourced, not a danger score.";
+  `${EU_US_DIVERGENCE.length} food additives — titanium dioxide, potassium bromate, BHA and more — with a documented difference in US and EU regulatory status. Sourced, not a danger score.`;
 
 function escapeHtml(str) {
   return String(str ?? "").replace(/[&<>"']/g, (ch) => ({
