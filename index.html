@@ -448,7 +448,7 @@ dialog#about::backdrop{background:var(--backdrop)}
     <p style="margin-top:var(--s4)">Ingredient flags read label text from the product databases. &ldquo;May contain&rdquo; warnings often aren't in that data, so read the package if you have an allergy.</p>
     <p style="margin-top:var(--s4)">Always check the lot code and date on your own package before deciding.</p>
     <h3>Spotted a wrong match?</h3>
-    <p>Matching is fuzzy by design, so mistakes happen. <a class="src-link" href="mailto:hello@genuinejack.xyz?subject=Lettuce%20Know%20feedback">Email what you found</a> and it helps make the matching better.</p>
+    <p>Matching is fuzzy by design, so mistakes happen. <a class="src-link" href="#" data-act="open-report">Tell us what you found</a> and it helps make the matching better.</p>
     <h3>Your data</h3>
     <p>There's no account and nothing is tracked. Your watchlist, history, and settings live only in this browser &mdash; the only thing sent anywhere is the barcode itself, to check it against FDA and USDA data.</p>
   </div>
@@ -473,7 +473,6 @@ const FDC  = "/api/fdc";                   // serverless proxy — holds the Foo
 const DIVERGENCE_API = "/api/divergence";   // Airtable-backed; eu-us-data.js is the fallback if this is unreachable
 const FEEDBACK_API = "/api/feedback";       // Airtable-backed "report a problem" endpoint (api/feedback.js)
 const QR_LIB = "https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js";
-const FEEDBACK = "mailto:hello@genuinejack.xyz?subject=Lettuce%20Know%20feedback";
 
 const CACHE_KEY = "rc_index_v3";
 const HIST_KEY = "rc_history";
@@ -1273,6 +1272,9 @@ function homeView() {
       </button>
       <button class="ghost" data-act="manual">Enter the number</button>
     </div>
+    <div style="text-align:center;margin-top:var(--s3)">
+      <button class="linkish" data-act="pantry">Buying several? Try Pantry check</button>
+    </div>
     <div id="srcline">${sourceTags()}</div>
     ${teaserHtml()}
     ${h}
@@ -1549,7 +1551,7 @@ function resultView(r) {
         <span class="btn-inner">${iconSpan(ICONS.scan, 18)} Scan another</span>
       </button>
     </div>
-    <p class="mini" style="text-align:center"><a class="src-link" href="${FEEDBACK}">Wrong result? Tell me</a></p>`;
+    <p class="mini" style="text-align:center"><a class="src-link" href="#" data-act="open-report">Wrong result? Tell me</a></p>`;
 }
 
 /* ---------- recalls browser ---------- */
@@ -1722,7 +1724,7 @@ function settingsView() {
       <form data-act="report-feedback" style="display:flex;gap:var(--s2)" novalidate>
         <label class="sr-only" for="rpin">Describe the problem</label>
         <input id="rpin" type="text" maxlength="400" placeholder="Wrong ingredient, missing product&hellip;" style="flex:1;min-width:0">
-        <button class="ghost" type="submit" style="width:auto;padding:0 var(--s5)">Send</button>
+        <button class="ghost" type="submit" style="width:auto;padding:0 var(--s5)">Report it</button>
         <div style="position:absolute;left:-9999px" aria-hidden="true">
           <label for="rphp">Leave this field empty</label>
           <input id="rphp" type="text" tabindex="-1" autocomplete="off">
@@ -1731,7 +1733,6 @@ function settingsView() {
       <p class="mini">Goes straight to the person who built this &mdash; no account needed.</p>
     </section>
 
-    <p class="foot">Matching is fuzzy by design &mdash; <a class="src-link" href="${FEEDBACK}">report a wrong result</a> and it helps make it better.</p>
     <p class="made">Built by Jack with <span role="img" aria-label="orange heart">🧡</span></p>
     ${tabbar("/settings")}`;
 }
@@ -2289,6 +2290,7 @@ const ACTIONS = {
   unwatch: code => unwatch(code),
   share: code => shareResult(code),
   mode: setScanMode,
+  pantry: () => { batchMode = true; navigate("/scan"); },
   "batch-done": () => navigate("/batch"),
   "batch-clear": () => { batch = []; navigate("/scan"); },
   photo: () => { const f = document.getElementById("photoin"); if (f) { f.value = ""; f.click(); } },
@@ -2311,6 +2313,11 @@ const ACTIONS = {
   "clear-recent": clearRecent,
   "report-nodata": code => reportFeedback({ type: "no-data", barcode: code, website: "" }),
   "report-feedback": reportSettings,
+  "open-report": () => {
+    closeAbout();
+    navigate("/settings");
+    setTimeout(() => { const el = document.getElementById("rpin"); if (el) el.focus(); }, 0);
+  },
   "notify": arg => notifyToggle(arg)
 };
 
