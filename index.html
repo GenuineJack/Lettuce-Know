@@ -433,24 +433,25 @@ dialog#about::backdrop{background:var(--backdrop)}
 <dialog id="about" aria-labelledby="about-h">
   <div class="sheet">
     <div class="sheet-head">
-      <h2 id="about-h">What this does</h2>
+      <h2 id="about-h">How Lettuce Know works</h2>
       <button class="icon-btn" data-act="about-close" aria-label="Close">&#10005;</button>
     </div>
-    <p>Scan a grocery barcode. Lettuce Know checks it against live FDA and USDA recalls, then flags ingredients the US and EU regulate differently. Save a product and it gets re-checked every time the data refreshes.</p>
+    <p>Scan a barcode. We check it against live FDA and USDA recalls, then flag any ingredients the US and EU regulate differently. Save a product and we'll keep watching it every time the data refreshes.</p>
     <h3>Where the data comes from</h3>
     <ul class="list">
       <li>Recalls: openFDA and USDA FSIS, refreshed twice a day.</li>
       <li>Products: Open Food Facts and USDA FoodData Central.</li>
     </ul>
-    <h3>What it can't tell you</h3>
-    <p>Recalls are matched on brand and product name, not the barcode &mdash; no public database links the two. So &ldquo;no recall found&rdquo; means nothing matched, not that a product is safe.</p>
-    <p style="margin-top:var(--s4)">The EU/US notes say what each regulator allows. They aren't a safety score.</p>
-    <p style="margin-top:var(--s4)">Ingredient flags read label text from the product databases. &ldquo;May contain&rdquo; warnings often aren't in that data, so read the package if you have an allergy.</p>
-    <p style="margin-top:var(--s4)">Always check the lot code and date on your own package before deciding.</p>
-    <h3>Spotted a wrong match?</h3>
-    <p>Matching is fuzzy by design, so mistakes happen. <a class="src-link" href="#" data-act="open-report">Tell us what you found</a> and it helps make the matching better.</p>
+    <h3>Good to know</h3>
+    <p>Recalls match on brand and product name, not the barcode itself. No public database links the two, so &ldquo;no recall found&rdquo; means nothing matched, not that a product's cleared.</p>
+    <p style="margin-top:var(--s4)">The EU/US notes show what each regulator allows. They're not a safety score.</p>
+    <p style="margin-top:var(--s4)">Ingredient flags come from label text in the product databases. &ldquo;May contain&rdquo; warnings usually aren't in there, so check the package yourself if you're managing an allergy.</p>
+    <p style="margin-top:var(--s4)">Always check the lot code and date on your own package before deciding anything.</p>
+    <h3>Something look off?</h3>
+    <p>Matching is fuzzy by design, so it'll miss sometimes. <a class="src-link" href="#" data-act="open-report">Tell us what you found</a> and it helps us fix the matching for everyone.</p>
     <h3>Your data</h3>
-    <p>There's no account and nothing is tracked. Your watchlist, history, and settings live only in this browser &mdash; the only thing sent anywhere is the barcode itself, to check it against FDA and USDA data.</p>
+    <p>No account, nothing tracked. Your watchlist, history, and settings live only in this browser. The only thing we send anywhere is the barcode, to check it against FDA and USDA data.</p>
+    <p style="margin-top:var(--s5);padding-top:var(--s4);border-top:1px solid var(--line);font-size:13px;color:var(--dim);text-align:center">Lettuce Know &middot; built solo, powered by public data</p>
   </div>
 </dialog>
 <noscript>
