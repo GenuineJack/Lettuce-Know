@@ -32,10 +32,10 @@ if (!Array.isArray(EU_US_DIVERGENCE) || EU_US_DIVERGENCE.length === 0) {
   throw new Error("EU_US_DIVERGENCE is missing or empty in eu-us-data.js — refusing to write an empty page.");
 }
 
-const SITE_URL = "https://lettuce-know.vercel.app/eu-us-watch.html"; // TODO: must match the real deployed domain
-const APP_URL = "https://lettuce-know.vercel.app/";
+const SITE_URL = "https://www.lettuce-know.info/eu-us-watch.html";
+const APP_URL = "https://www.lettuce-know.info/";
 // SVG og:image doesn't render on Facebook/LinkedIn/Threads crawlers — raster only.
-const OG_IMAGE = "https://lettuce-know.vercel.app/icons/icon-512.png"; // TODO: must match the real deployed domain
+const OG_IMAGE = "https://www.lettuce-know.info/icons/icon-512.png";
 
 const PAGE_TITLE = "Food Additives: Banned in the EU, Legal in the US";
 const PAGE_DESCRIPTION =
