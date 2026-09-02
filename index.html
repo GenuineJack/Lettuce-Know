@@ -188,6 +188,31 @@ ol.list li::before{content:counter(step);left:0;top:auto;width:auto;height:auto;
 ol.list li:first-child::before{top:auto}
 .label{font-size:11px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim-2);font-weight:700;margin-bottom:var(--s3)}
 
+/* Recall card: severity and provenance in the header, product as the
+   headline, everything else in support of it. */
+.rc-head{display:flex;align-items:center;flex-wrap:wrap;gap:var(--s2);margin-bottom:var(--s3)}
+.rc-prov{margin-left:auto;display:flex;align-items:baseline;gap:var(--s2);min-width:0}
+.rc-meta{margin-bottom:0}
+.rc-date{font-size:12px;color:var(--dim-2)}
+/* Long enough to carry the sell-by dates someone checks against their package,
+   so it leads without shouting: semibold body, not display weight. */
+.rc-title{font-size:15.5px;line-height:1.45;font-weight:600;overflow-wrap:anywhere}
+.rc-none{font-weight:500;color:var(--dim)}
+.rc-gloss{font-size:13px;line-height:1.55;color:var(--dim);margin-top:var(--s3);background:var(--card-2);
+  border:1px solid var(--line);border-radius:var(--r-sm);padding:10px 12px}
+.rc-dl{margin-top:var(--s4)}
+.rc-dl .row dd.dd-plain{font-weight:400;color:var(--dim)}
+.rc-why{margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--line-soft)}
+.rc-reason{font-size:14.5px;line-height:1.55;font-weight:500}
+.tag-row{display:flex;flex-wrap:wrap;gap:6px}
+.rtag{font-size:12.5px;font-weight:600;line-height:1.3;padding:6px 11px;border-radius:var(--r-pill);
+  background:var(--card-2);border:1px solid var(--line);color:var(--dim)}
+.statesd summary{list-style:none;cursor:pointer;color:var(--green-ink);font-weight:500;padding:4px 0;min-height:32px}
+.statesd summary::-webkit-details-marker{display:none}
+.statesd summary::after{content:" ▾";font-size:10px}
+.statesd[open] summary::after{content:" ▴"}
+.statesd span{display:block;margin-top:4px;color:var(--dim);font-weight:400}
+
 .scan-frame{position:relative}
 #reader{width:100%;border-radius:var(--r-xl);overflow:hidden;background:#000;min-height:320px;
   max-height:min(60dvh,440px);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center}
@@ -340,8 +365,9 @@ button.tag:active{transform:scale(.97)}
 .recd summary:active{background:var(--card-2)}
 @media (hover:hover){.recd:hover{border-color:var(--green-line)}}
 .recd-top{display:flex;align-items:center;gap:var(--s2);margin-bottom:6px}
-.recd-date{font-size:12px;color:var(--dim-2)}
-.recd-firm{display:block;font-size:15px;font-weight:600;line-height:1.4;overflow-wrap:anywhere}
+.recd-date{font-size:12px;color:var(--dim-2);margin-left:auto}
+.recd-title{display:block;font-size:15px;font-weight:600;line-height:1.4;overflow-wrap:anywhere}
+.recd-none{font-weight:500;color:var(--dim)}
 .recd-why{display:block;font-size:13px;color:var(--dim);line-height:1.5;margin-top:2px;overflow-wrap:anywhere}
 .recd[open] summary{border-bottom:1px solid var(--line-soft);border-radius:var(--r-md) var(--r-md) 0 0}
 .recd-body{padding:0 var(--s4) var(--s4)}
@@ -439,24 +465,25 @@ dialog#about::backdrop{background:var(--backdrop)}
 <dialog id="about" aria-labelledby="about-h">
   <div class="sheet">
     <div class="sheet-head">
-      <h2 id="about-h">What this does</h2>
+      <h2 id="about-h">How Lettuce Know works</h2>
       <button class="icon-btn" data-act="about-close" aria-label="Close">&#10005;</button>
     </div>
-    <p>Scan a grocery barcode. Lettuce Know checks it against live FDA and USDA recalls, then flags ingredients the US and EU regulate differently. Save a product and it gets re-checked every time the data refreshes.</p>
+    <p>Scan a barcode. We check it against live FDA and USDA recalls, then flag any ingredients the US and EU regulate differently. Save a product and we'll keep watching it every time the data refreshes.</p>
     <h3>Where the data comes from</h3>
     <ul class="list">
       <li>Recalls: openFDA and USDA FSIS, refreshed twice a day.</li>
       <li>Products: Open Food Facts and USDA FoodData Central.</li>
     </ul>
-    <h3>What it can't tell you</h3>
-    <p>Recalls are matched on brand and product name, not the barcode &mdash; no public database links the two. So &ldquo;no recall found&rdquo; means nothing matched, not that a product is safe.</p>
-    <p style="margin-top:var(--s4)">The EU/US notes say what each regulator allows. They aren't a safety score.</p>
-    <p style="margin-top:var(--s4)">Ingredient flags read label text from the product databases. &ldquo;May contain&rdquo; warnings often aren't in that data, so read the package if you have an allergy.</p>
-    <p style="margin-top:var(--s4)">Always check the lot code and date on your own package before deciding.</p>
-    <h3>Spotted a wrong match?</h3>
-    <p>Matching is fuzzy by design, so mistakes happen. <a class="src-link" href="#" data-act="open-report">Tell us what you found</a> and it helps make the matching better.</p>
+    <h3>Good to know</h3>
+    <p>Recalls match on brand and product name, not the barcode itself. No public database links the two, so &ldquo;no recall found&rdquo; means nothing matched, not that a product's cleared.</p>
+    <p style="margin-top:var(--s4)">The EU/US notes show what each regulator allows. They're not a safety score.</p>
+    <p style="margin-top:var(--s4)">Ingredient flags come from label text in the product databases. &ldquo;May contain&rdquo; warnings usually aren't in there, so check the package yourself if you're managing an allergy.</p>
+    <p style="margin-top:var(--s4)">Always check the lot code and date on your own package before deciding anything.</p>
+    <h3>Something look off?</h3>
+    <p>Matching is fuzzy by design, so it'll miss sometimes. <a class="src-link" href="#" data-act="open-report">Tell us what you found</a> and it helps us fix the matching for everyone.</p>
     <h3>Your data</h3>
-    <p>There's no account and nothing is tracked. Your watchlist, history, and settings live only in this browser &mdash; the only thing sent anywhere is the barcode itself, to check it against FDA and USDA data.</p>
+    <p>No account, nothing tracked. Your watchlist, history, and settings live only in this browser. The only thing we send anywhere is the barcode, to check it against FDA and USDA data.</p>
+    <p style="margin-top:var(--s5);padding-top:var(--s4);border-top:1px solid var(--line);font-size:13px;color:var(--dim);text-align:center">Lettuce Know &middot; built solo, powered by public data</p>
   </div>
 </dialog>
 <noscript>
@@ -583,6 +610,44 @@ function stripHtml(s) {
   } catch (e) {
     return String(s).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
   }
+}
+
+/* FSIS leaves field_establishment blank on a fair share of records even when
+   the company name is sitting in the contact blob a few fields over ("Company
+   Contact Shanghai Ravioli Corporation Jordan Wu, QC Manager 617-989-3833
+   shanghaicorp@gmail.com"). Pull that apart so a card can show a firm, a
+   person and a number separately — and so a "Firm: Not listed" row never
+   claims a gap in data we already have. */
+const CO_SUFFIX = /\b(?:incorporated|corporation|company|inc|llc|l\.l\.c|ltd|co|corp|plc|farms?|foods?|meats?|packing|produce|dairy|bakery|brands?|group|industries|enterprises|kitchens?|provisions?)\b\.?/gi;
+/* Global so a second address or number in the blob is stripped too, not left
+   behind to pollute the name. match()[0] still takes the first. */
+const PHONE_RX = /(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?:\s*(?:ext|x)\.?\s*\d{1,6})?/gi;
+const EMAIL_RX = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g;
+
+function parseContact(raw) {
+  const text = stripHtml(raw)
+    .replace(/^\s*(?:company|media|press|consumer)?\s*contacts?\s*[:–-]?\s*/i, "").trim();
+  const out = { firm: "", who: "", phone: "", email: "" };
+  if (!text) return out;
+  out.email = (text.match(EMAIL_RX) || [""])[0];
+  out.phone = ((text.match(PHONE_RX) || [""])[0]).trim();
+  const rest = text.replace(EMAIL_RX, " ").replace(PHONE_RX, " ").replace(/\s+/g, " ").trim();
+  /* A firm name ends at a corporate suffix; whatever follows is the person.
+     No suffix means no guess — a bare personal name is not a company. Titles
+     usually sit after a comma ("Jordan Wu, QC Manager"), so only suffixes
+     before the first comma count, and the last one wins so multi-word names
+     ("Best Foods Distribution LLC") survive intact. */
+  const head = rest.split(",")[0];
+  let end = 0;
+  CO_SUFFIX.lastIndex = 0;
+  for (let m; (m = CO_SUFFIX.exec(head)) !== null; ) { if (m.index > 0) end = m.index + m[0].length; }
+  if (end) {
+    out.firm = rest.slice(0, end).trim().replace(/[,;]$/, "").slice(0, 120);
+    out.who = rest.slice(end).replace(/^[\s,;.–-]+/, "").trim().slice(0, 120);
+  } else {
+    out.who = rest.slice(0, 120);
+  }
+  return out;
 }
 
 const safeImg = u => /^https:\/\//i.test(String(u || "")) ? String(u) : null;
@@ -716,14 +781,21 @@ async function fetchFsis() {
   if (!r.ok) throw new Error("fsis " + r.status);
   const j = await r.json();
   const rows = Array.isArray(j) ? j : (Array.isArray(j.results) ? j.results : []);
-  return rows.filter(x => x && (x.langcode || "English") === "English").map(x => ({
-    src: "USDA", desc: (stripHtml(x.field_product_items) || stripHtml(x.field_title)).slice(0, 400),
-    firm: x.field_establishment || "", reason: x.field_recall_reason || "",
-    date: (x.field_recall_date || "").replace(/-/g, ""), cls: x.field_recall_classification || x.field_risk_level || "",
-    status: x.field_active_notice === "True" ? "Active" : "Closed", num: x.field_recall_number || "",
-    states: x.field_states || "", title: stripHtml(x.field_title).slice(0, 200),
-    contact: stripHtml(x.field_company_media_contact).slice(0, 200)
-  }));
+  return rows.filter(x => x && (x.langcode || "English") === "English").map(x => {
+    const contact = stripHtml(x.field_company_media_contact).slice(0, 200);
+    return {
+      src: "USDA", desc: (stripHtml(x.field_product_items) || stripHtml(x.field_title)).slice(0, 400),
+      /* Recovered from the contact line when FSIS left the establishment blank:
+         it is the recalling firm either way, so it should also be searchable
+         and available to brand matching, not display-only. */
+      firm: x.field_establishment || parseContact(contact).firm,
+      reason: x.field_recall_reason || "",
+      date: (x.field_recall_date || "").replace(/-/g, ""), cls: x.field_recall_classification || x.field_risk_level || "",
+      status: x.field_active_notice === "True" ? "Active" : "Closed", num: x.field_recall_number || "",
+      states: x.field_states || "", title: stripHtml(x.field_title).slice(0, 200),
+      contact
+    };
+  });
 }
 
 /* Lowercased haystacks computed once per index, stripped before persisting. */
@@ -731,6 +803,9 @@ function prepareRows(rows) {
   (rows || []).forEach(r => {
     r._f = String(r.firm || "").toLowerCase();
     r._p = `${r.desc || ""} ${r.title || ""}`.toLowerCase();
+    /* Both the raw category and the plain-language label we actually show, so
+       searching for what's on screen finds it. */
+    r._r = `${r.reason || ""} ${reasonText(r)}`.toLowerCase();
   });
   return rows || [];
 }
@@ -827,7 +902,7 @@ function brandHistoryCard(bh) {
   return `<div class="card" style="margin-top:var(--s4)">
     <div class="label">Brand recall history</div>
     <p style="font-size:15px;line-height:1.5;font-weight:600">${who} appears in ${bh.count} recall records ${span}.</p>
-    <p class="mini">Most recent: ${esc(bh.recent.reason || "reason not listed")}${bh.recent.date ? ` (${fmtDate(bh.recent.date)})` : ""}.</p>
+    <p class="mini">Most recent: ${esc(reasonText(bh.recent) || "reason not listed")}${bh.recent.date ? ` (${fmtDate(bh.recent.date)})` : ""}.</p>
     <p class="mini">A brand-level pattern, matched by name. It doesn't mean this product is affected.</p>
   </div>`;
 }
@@ -1375,26 +1450,144 @@ function loadingView(code, stepIdx) {
   </div>`;
 }
 
+/* ---------- reason, class and distribution vocabularies ----------
+   FDA's reason_for_recall is a written sentence ("may be contaminated with
+   Listeria monocytogenes"). USDA's field_recall_reason is one of a small set
+   of fixed categories, sometimes several comma-joined. Rendered the same way,
+   the USDA ones read as vague boilerplate and make unrelated recalls look
+   identical to each other, so they get a tag plus one plain-language line
+   instead. FDA reasons are left as written. */
+const REASON_GLOSS = [
+  [/without benefit of inspection|not presented for import/i, "Produced without inspection",
+    "Shipped without a USDA inspector present at the plant. A process violation — not, on its own, a finding that anything is contaminated."],
+  [/import/i, "Import violation",
+    "Entered the US without the import inspection or paperwork the law requires."],
+  [/unreported allergen|undeclared|allergen/i, "Undeclared allergen",
+    "Contains an allergen the label doesn't declare. Serious if you react to it, harmless if you don't."],
+  [/misbrand|mislabel/i, "Misbranding",
+    "The label doesn't accurately describe what's inside — wrong product, wrong ingredients, or missing information."],
+  [/contamination|contaminated/i, "Product contamination",
+    "May contain something that shouldn't be there: bacteria, chemical residue, or a foreign object."],
+  [/foreign (matter|material)|extraneous/i, "Foreign material",
+    "May contain a physical object such as metal, plastic, or bone fragments."],
+  [/processing (defect|deviation)|underprocess|insanitary/i, "Processing problem",
+    "Something in the cooking, handling, or packaging didn't meet the standard that keeps the product safe."]
+];
+
+/* USDA only: the fixed categories, split apart and translated. */
+function reasonTags(rec) {
+  if (!rec || rec.src !== "USDA") return [];
+  return String(rec.reason || "").split(/\s*,\s*/).map(s => s.trim()).filter(Boolean).slice(0, 4)
+    .map(part => {
+      const hit = REASON_GLOSS.find(([rx]) => rx.test(part));
+      return hit ? { label: hit[1], gloss: hit[2] } : { label: part, gloss: "" };
+    });
+}
+
+/* One human-readable line for either source: mapped labels for USDA, the
+   written sentence for FDA. */
+function reasonText(rec) {
+  const tags = reasonTags(rec);
+  if (tags.length) return tags.map(t => t.label).join(" · ");
+  return String((rec && rec.reason) || "").trim();
+}
+
+/* The FDA/USDA classification scale, which nobody carries around in their
+   head. Shown once, on the detail card, next to the badge. */
+const CLASS_GLOSS = [
+  [/class iii|^iii$|low/i, "Unlikely to cause harm, but the product breaks a labelling or regulatory rule."],
+  [/class ii\b|^ii$/i, "Could cause a temporary or reversible health problem. Serious harm is unlikely."],
+  [/class i\b|^i$|high/i, "There's a reasonable chance that eating this causes serious health problems."]
+];
+function classGloss(cls) {
+  const c = String(cls || "");
+  if (!c) return "";
+  const hit = CLASS_GLOSS.find(([rx]) => rx.test(c));   /* III and II tested first: "class i" matches all three */
+  return hit ? hit[1] : "";
+}
+
+/* FSIS falls back to the notice title when there are no product items, and
+   that title is frequently just the category again ("Import Violation"). A
+   product line that only restates the reason isn't a product line — say the
+   record doesn't name one rather than printing the category twice. */
+function productText(rec) {
+  const p = String((rec && (rec.desc || rec.title)) || "").trim();
+  if (!p) return "";
+  const norm = s => String(s).toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const np = norm(p);
+  if (!np) return "";
+  const reasons = [String(rec.reason || ""), reasonText(rec)].map(norm).filter(Boolean);
+  /* Containment only for USDA, where the title fallback creates the problem —
+     an FDA description is never a restatement of its own reason sentence. */
+  const restates = r => r === np || (rec.src === "USDA" && np.length < 60 && r.includes(np));
+  return reasons.some(restates) ? "" : p;
+}
+
+/* Product blobs carry the packaging and the sell-by dates, which matter on the
+   card and are noise in a list row. Clip on a word boundary — a headline that
+   ends mid-word reads as a bug. */
+function clip(s, max) {
+  const t = String(s || "").trim();
+  if (t.length <= max) return t;
+  const cut = t.slice(0, max);
+  const sp = cut.lastIndexOf(" ");
+  return (sp > max * 0.6 ? cut.slice(0, sp) : cut).replace(/[\s,;:.–-]+$/, "") + "…";
+}
+
+/* field_states arrives comma-joined with no spaces, so it renders as one
+   run-on word. Split it, space it, and past a handful hand it to a
+   disclosure rather than letting it eat the card. */
+const STATES_INLINE_MAX = 6;
+function stateList(states) {
+  return String(states || "").split(/\s*,\s*/).map(s => s.trim()).filter(Boolean);
+}
+function statesHtml(states) {
+  const list = stateList(states);
+  if (!list.length) return "";
+  if (list.length <= STATES_INLINE_MAX) return esc(list.join(", "));
+  return `<details class="statesd"><summary>${list.length} states &amp; regions</summary>
+    <span>${esc(list.join(", "))}</span></details>`;
+}
+
 /* ---------- recall cards ---------- */
+/* The product is the headline. Everything else on the record — firm, class,
+   contact, distribution — is there to help someone decide whether that
+   headline is the box in their kitchen. */
 function recallCard(h) {
   const c = h.rec;
   const elsewhere = prefs.state && reachesState(c, prefs.state) === false;
+  const ct = parseContact(c.contact);
+  const firm = String(c.firm || ct.firm || "").trim();
+  const product = productText(c);
+  const tags = reasonTags(c);
+  const gloss = classGloss(c.cls);
+  const person = [ct.who, ct.phone].filter(Boolean).join(" · ");
+  const states = statesHtml(c.states);
+  const detail = [
+    firm ? `<div class="row"><dt>Recalled by</dt><dd>${esc(firm)}</dd></div>` : "",
+    person ? `<div class="row"><dt>Contact</dt><dd class="dd-plain">${esc(person)}</dd></div>` : "",
+    ct.email ? `<div class="row"><dt>Email</dt><dd class="dd-plain">${esc(ct.email)}</dd></div>` : "",
+    states ? `<div class="row"><dt>Where it shipped</dt><dd class="dd-plain">${states}</dd></div>` : ""
+  ].join("");
+
   return `<div class="card" style="margin-top:var(--s4)">
-    <div class="label">${esc(c.src)} recall ${esc(c.num || "")}</div>
-    <div style="font-size:15px;line-height:1.5;font-weight:600">${esc(c.reason || "No reason listed")}</div>
-    <dl>
-      <div class="row"><dt>Firm</dt><dd>${esc(c.firm || "Not listed")}</dd></div>
-      <div class="row"><dt>Date</dt><dd>${fmtDate(c.date)}</dd></div>
-      <div class="row"><dt>Class</dt><dd>${esc(c.cls || "Not listed")}</dd></div>
-      <div class="row"><dt>Status</dt><dd>${esc(c.status || "Not listed")}</dd></div>
-      ${c.states ? `<div class="row"><dt>Where</dt><dd>${esc(c.states)}</dd></div>` : ""}
-    </dl>
+    <div class="rc-head">
+      ${clsBadge(c.cls)}${c.status ? `<span class="pill p-dim">${esc(c.status)}</span>` : ""}
+      <span class="rc-prov"><span class="label rc-meta">${esc(c.src)} recall ${esc(c.num || "")}</span>
+        <span class="rc-date">${fmtDate(c.date)}</span></span>
+    </div>
+    <div class="rc-title${product ? "" : " rc-none"}">${product
+      ? esc(product)
+      : `${esc(c.src)} didn't list the products this covers`}</div>
+    ${gloss ? `<p class="rc-gloss">${esc(gloss)}</p>` : ""}
+    ${detail ? `<dl class="rc-dl">${detail}</dl>` : ""}
     ${elsewhere ? `<p class="mini">The distribution list doesn't mention ${esc(STATES[prefs.state])} &mdash; this one may not have reached you.</p>` : ""}
-    ${c.desc ? `<div style="margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--line-soft)">
-      <div class="label">Products covered</div>
-      <div style="font-size:14px;line-height:1.6;color:var(--dim)">${esc(c.desc)}</div>
-    </div>` : ""}
-    ${c.contact ? `<p class="mini">Company contact: ${esc(c.contact)}</p>` : ""}
+    <div class="rc-why">
+      <div class="label">Why it was recalled</div>
+      ${tags.length ? `<div class="tag-row">${tags.map(t => `<span class="rtag">${esc(t.label)}</span>`).join("")}</div>
+        ${tags.filter(t => t.gloss).map(t => `<p class="rc-gloss">${esc(t.gloss)}</p>`).join("")}`
+      : `<div class="rc-reason">${esc(c.reason || "No reason listed.")}</div>`}
+    </div>
   </div>`;
 }
 
@@ -1468,14 +1661,14 @@ function resultView(r) {
         <div class="v-title">${strong ? "Recalled" : "Possible match"}</div>
         <div class="v-body">${strong
           ? "This matches an active recall. Check the lot code on your package."
-          : "A recall partly matches this product. Compare the covered products below to your package."}</div>
+          : "A recall partly matches this product. Compare the recalled product below to your package."}</div>
       </div>
       ${actRow}
       ${list.slice(0, 3).map(recallCard).join("")}
       <div class="card" style="margin-top:var(--s4)">
         <div class="label">What to do</div>
         <ol class="list">
-          <li>Match the lot code and best-by date on your package to the covered products above.</li>
+          <li>Match the lot code and best-by date on your package to the recalled product above.</li>
           <li>If it matches, don't eat it — most stores refund without a receipt.</li>
           <li>Report a reaction to the FDA at safetyreporting.hhs.gov, or call USDA at 888-674-6854 for meat and poultry.</li>
         </ol>
@@ -1565,7 +1758,7 @@ function filteredRecalls() {
   let rows = (recallIndex && recallIndex.rows) || [];
   if (recallsFilter !== "all") rows = rows.filter(r => r.src === recallsFilter);
   const q = recallsQuery.trim().toLowerCase();
-  if (q) rows = rows.filter(r => (r._f || "").includes(q) || (r._p || "").includes(q) || String(r.reason || "").toLowerCase().includes(q));
+  if (q) rows = rows.filter(r => (r._f || "").includes(q) || (r._p || "").includes(q) || (r._r || "").includes(q));
   return [...rows].sort((a, b) => String(b.date).localeCompare(String(a.date)));
 }
 
@@ -1587,12 +1780,22 @@ function recallListHtml() {
   }
   return `
     <p class="mini" style="margin:var(--s4) 0 var(--s1);font-weight:600">${rows.length.toLocaleString()} recall${rows.length > 1 ? "s" : ""} &middot; newest first</p>
-    ${shown.map(r => `<details class="recd"><summary>
-      <span class="recd-top"><span class="pill p-dim">${esc(r.src)}</span>
-        <span class="recd-date">${fmtDate(r.date)}</span>${clsBadge(r.cls)}</span>
-      <span class="recd-firm">${esc(r.firm || "Unnamed firm")}</span>
-      <span class="recd-why">${esc(String(r.reason || r.desc || "").slice(0, 110))}</span>
-    </summary><div class="recd-body">${recallCard({ rec: r })}</div></details>`).join("")}
+    ${shown.map(r => {
+      /* Product first: it is the only field that reliably tells one recall
+         from the next. Firm and reason ride underneath — two USDA rows with
+         the same category and no product really are indistinguishable in the
+         feed, and saying so is more use than implying they differ. */
+      const product = productText(r);
+      const sub = [String(r.firm || "").trim(), reasonText(r)].filter(Boolean).join(" · ");
+      return `<details class="recd"><summary>
+      <span class="recd-top">${clsBadge(r.cls)}<span class="pill p-dim">${esc(r.src)}</span>
+        <span class="recd-date">${fmtDate(r.date)}</span></span>
+      <span class="recd-title${product ? "" : " recd-none"}">${product
+        ? esc(clip(product, 100))
+        : `Products not listed by ${esc(r.src)}`}</span>
+      ${sub ? `<span class="recd-why">${esc(clip(sub, 110))}</span>` : ""}
+    </summary><div class="recd-body">${recallCard({ rec: r })}</div></details>`;
+    }).join("")}
     ${rows.length > recallsShown ? `<div class="stack" style="margin-top:var(--s4)">
       <button class="ghost" data-act="rmore">Show ${Math.min(25, rows.length - recallsShown)} more</button></div>` : ""}`;
 }
