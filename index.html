@@ -236,6 +236,11 @@ ol.list li:first-child::before{top:auto}
 @media (hover:hover){.icon-btn:hover{background:var(--card-2);color:var(--fg)}}
 .spin{width:28px;height:28px;border:3px solid var(--line);border-top-color:var(--green);border-radius:50%;animation:s .8s linear infinite;margin:0 auto}
 @keyframes s{to{transform:rotate(360deg)}}
+/* Pull-to-refresh indicator (Home only). Sits above the viewport by default;
+   JS translates it and #app down together as the user drags, tracking the
+   finger 1:1 during the gesture and transitioning only on release/snap-back. */
+.pull-ind{position:fixed;top:0;left:0;right:0;height:64px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:14px;transform:translateY(-64px);z-index:5;pointer-events:none}
+.pull-ind .spin{width:22px;height:22px;border-width:2.5px}
 .err{background:var(--red-bg);border:1px solid var(--red-line);color:var(--red);padding:14px;border-radius:var(--r-md);font-size:14px;line-height:1.5}
 
 /* Progress steps replace the bare spinner so waits feel intentional. */
@@ -427,6 +432,7 @@ dialog#about::backdrop{background:var(--backdrop)}
 <body>
 <a class="sr-only" href="#app">Skip to content</a>
 <main class="wrap" id="app" aria-busy="false"></main>
+<div id="pullind" class="pull-ind" aria-hidden="true"><div class="spin"></div></div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <div id="sr-status" class="sr-only" role="status" aria-live="polite"></div>
 <input type="file" id="photoin" accept="image/*" class="sr-only" tabindex="-1" aria-hidden="true">
@@ -1719,6 +1725,12 @@ function settingsView() {
       </div>
     </section>
 
+    <section style="margin-top:var(--s6)" aria-labelledby="set-reset-h">
+      <h2 id="set-reset-h" class="label" style="font-family:Inter,sans-serif">Reset</h2>
+      <p class="mini">If the app is stuck or acting strange, reset it. This clears your watchlist, history, and settings on this device.</p>
+      <button class="ghost" data-act="reset-app" style="color:var(--red);margin-top:var(--s3)">Reset app</button>
+    </section>
+
     <section style="margin-top:var(--s6)" aria-labelledby="set-report-h">
       <h2 id="set-report-h" class="label" style="font-family:Inter,sans-serif">Report a problem</h2>
       <form data-act="report-feedback" style="display:flex;gap:var(--s2)" novalidate>
@@ -2276,6 +2288,34 @@ function clearRecent() {
   toast("Recent checks cleared");
 }
 
+/* Full recovery path for a PWA with no browser chrome to fall back on — no
+   pull-to-reload, no cache-clear button, nothing. This is the escape hatch:
+   drop the service worker, every cache, IndexedDB, and localStorage, then
+   force a clean reload. Best-effort try/catch around each step so a failure
+   partway through still ends in a reload rather than leaving the app stuck. */
+async function resetApp() {
+  if (!confirm("This clears your watchlist, history, and settings on this device, and can't be undone. Continue?")) return;
+  await performReset();
+}
+
+// No confirm() here — this only runs from an explicit ?reset=1 boot param,
+// which is itself the confirmation (e.g. a support link: "open this URL").
+async function performReset() {
+  try {
+    if ("serviceWorker" in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+    }
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+    if ("indexedDB" in window) { try { indexedDB.deleteDatabase("lettuce-know"); } catch (e) {} }
+    localStorage.clear();
+  } catch (e) { /* best-effort — still reload even if a step failed */ }
+  location.href = location.origin + location.pathname;
+}
+
 /* ---------- event delegation ---------- */
 const ACTIONS = {
   nav: p => navigate(p),
@@ -2284,7 +2324,7 @@ const ACTIONS = {
   "submit-manual": submitManual, "submit-name": runNameSearch,
   recheck: code => navigate("/product/" + code),
   search: q => openSearch(q),
-  refresh: refreshData, install: doInstall,
+  refresh: refreshData, install: doInstall, "reset-app": resetApp,
   about: openAbout, "about-close": closeAbout, torch: toggleTorch,
   watch: code => toggleWatch(code),
   unwatch: code => unwatch(code),
@@ -2380,6 +2420,68 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("pagehide", () => { stopScanner(); });
 
+/* ---------- pull-to-refresh (Home only) ----------
+   body{overscroll-behavior-y:none} already kills native bounce, so dragging
+   down at the top of the page currently does nothing — this fills that in
+   with a custom gesture rather than fighting a native one. Scoped to Home:
+   the scan screen has a live camera feed a drag gesture would only get in
+   the way of, and other screens don't gain much from it. Reuses the same
+   refreshData() the Settings "Refresh recall data" button calls — no new
+   refresh logic, just a native-feeling way to reach it. */
+const PULL_THRESHOLD = 56;
+const PULL_MAX = 64;
+let pullStartY = null;
+let pullDist = 0;
+let pullBusy = false;
+
+function pullArmed() {
+  if (pullBusy || pullStartY == null) return false;
+  if (parseHash() !== "/") return false;
+  const about = document.getElementById("about");
+  if (about && about.open) return false;
+  return true;
+}
+
+function setPull(px, animate) {
+  const pi = document.getElementById("pullind");
+  if (!pi) return;
+  pi.style.transition = animate ? "transform .2s ease" : "none";
+  app.style.transition = animate ? "transform .2s ease" : "none";
+  pi.style.transform = `translateY(${px - PULL_MAX}px)`;
+  app.style.transform = px ? `translateY(${px}px)` : "";
+}
+
+document.addEventListener("touchstart", e => {
+  if (parseHash() !== "/" || window.scrollY > 0 || pullBusy) { pullStartY = null; return; }
+  pullStartY = e.touches[0].clientY;
+  pullDist = 0;
+}, { passive: true });
+
+document.addEventListener("touchmove", e => {
+  if (!pullArmed()) return;
+  const dy = e.touches[0].clientY - pullStartY;
+  if (dy <= 0) { pullDist = 0; setPull(0, false); return; }
+  e.preventDefault();
+  pullDist = dy;
+  setPull(Math.min(dy * 0.5, PULL_MAX), false);
+}, { passive: false });
+
+async function endPull() {
+  if (pullStartY == null) return;
+  const dragged = pullDist;
+  pullStartY = null;
+  pullDist = 0;
+  if (dragged * 0.5 < PULL_THRESHOLD) { setPull(0, true); return; }
+  pullBusy = true;
+  setPull(PULL_MAX, true);
+  try { await refreshData(); } finally {
+    pullBusy = false;
+    setPull(0, true);
+  }
+}
+document.addEventListener("touchend", endPull);
+document.addEventListener("touchcancel", () => { pullStartY = null; pullDist = 0; setPull(0, true); });
+
 window.addEventListener("beforeinstallprompt", e => {
   e.preventDefault();
   installPrompt = e;
@@ -2405,6 +2507,13 @@ if ("serviceWorker" in navigator) {
 }
 
 /* ---------- boot ---------- */
+// A support link ("open this URL and it'll reset itself") for a user who
+// can't get far enough into the app to find the Reset button in Settings.
+// Skips the confirm() — visiting this exact URL is the explicit signal.
+if (new URLSearchParams(location.search).get("reset") === "1") {
+  performReset();
+} else {
+
 // Web Share Target: a share of text/URL containing a barcode lands here as
 // ?text=…; pull the digits out and jump straight to the result.
 (function () {
@@ -2437,6 +2546,8 @@ buildIndex(false)
     const t2 = document.getElementById("teaser");
     if (t2) t2.outerHTML = teaserHtml();
   });
+
+} // end ?reset=1 guard
 </script>
 </body>
 </html>

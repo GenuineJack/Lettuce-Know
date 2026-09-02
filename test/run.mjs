@@ -680,6 +680,75 @@ console.log('\n[28] Appearance: light is the default even on a dark-mode device'
   await ctx.close();
 }
 
+console.log('\n[29] Reset app clears storage and reloads');
+{
+  // Confirming the native dialog actually wipes storage and lands on a bare URL.
+  const { page, ctx } = await newPage(browser);
+  await page.goto(BASE + '/#/settings'); await page.waitForTimeout(900);
+  await page.evaluate(() => localStorage.setItem('rc_prefs_v1', '{"marker":true}'));
+  page.once('dialog', d => d.accept());
+  await page.click('[data-act="reset-app"]');
+  await page.waitForTimeout(1000);
+  eq(await page.evaluate(() => localStorage.getItem('rc_prefs_v1')), null, 'localStorage cleared after confirmed reset');
+  eq(await page.evaluate(() => location.search), '', 'landed on a bare URL, no leftover query');
+  await ctx.close();
+}
+{
+  // Declining the confirm must leave everything untouched.
+  const { page, ctx } = await newPage(browser);
+  await page.goto(BASE + '/#/settings'); await page.waitForTimeout(900);
+  await page.evaluate(() => localStorage.setItem('rc_prefs_v1', '{"marker":true}'));
+  page.once('dialog', d => d.dismiss());
+  await page.click('[data-act="reset-app"]');
+  await page.waitForTimeout(300);
+  eq(await page.evaluate(() => localStorage.getItem('rc_prefs_v1')), '{"marker":true}',
+     'declining the confirm leaves storage untouched');
+  await ctx.close();
+}
+
+console.log('\n[30] Pull-to-refresh on Home');
+{
+  // A drag past the threshold triggers exactly one refresh and settles cleanly.
+  const { page, ctx } = await newPage(browser, { ctx: { hasTouch: true } });
+  await page.goto(BASE); await page.waitForTimeout(900);
+  await page.evaluate(() => {
+    window.__pullRefreshCalls = 0;
+    const orig = refreshData;
+    refreshData = (...a) => { window.__pullRefreshCalls++; return orig(...a); };
+  });
+  await page.evaluate(() => {
+    const touch = (el, y) => new Touch({ identifier: 1, target: el, clientX: 195, clientY: y });
+    const el = document.documentElement;
+    el.dispatchEvent(new TouchEvent('touchstart', { touches: [touch(el, 40)], bubbles: true, cancelable: true }));
+    el.dispatchEvent(new TouchEvent('touchmove', { touches: [touch(el, 200)], bubbles: true, cancelable: true }));
+    el.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [touch(el, 200)], bubbles: true, cancelable: true }));
+  });
+  await page.waitForTimeout(700);
+  eq(await page.evaluate(() => window.__pullRefreshCalls), 1, 'a drag past the threshold triggers exactly one refresh');
+  eq(await page.evaluate(() => document.getElementById('app').style.transform), '', 'app settles back to no offset afterward');
+  await ctx.close();
+}
+{
+  // A short drag under the threshold never triggers a refresh.
+  const { page, ctx } = await newPage(browser, { ctx: { hasTouch: true } });
+  await page.goto(BASE); await page.waitForTimeout(900);
+  await page.evaluate(() => {
+    window.__pullRefreshCalls = 0;
+    const orig = refreshData;
+    refreshData = (...a) => { window.__pullRefreshCalls++; return orig(...a); };
+  });
+  await page.evaluate(() => {
+    const touch = (el, y) => new Touch({ identifier: 1, target: el, clientX: 195, clientY: y });
+    const el = document.documentElement;
+    el.dispatchEvent(new TouchEvent('touchstart', { touches: [touch(el, 40)], bubbles: true, cancelable: true }));
+    el.dispatchEvent(new TouchEvent('touchmove', { touches: [touch(el, 70)], bubbles: true, cancelable: true }));
+    el.dispatchEvent(new TouchEvent('touchend', { touches: [], changedTouches: [touch(el, 70)], bubbles: true, cancelable: true }));
+  });
+  await page.waitForTimeout(400);
+  eq(await page.evaluate(() => window.__pullRefreshCalls), 0, 'a short drag under the threshold does not trigger a refresh');
+  await ctx.close();
+}
+
 await browser.close(); server.close();
 console.log(`\n${'='.repeat(46)}\n  ${pass} passed, ${fail} failed\n${'='.repeat(46)}`);
 process.exit(fail ? 1 : 0);
