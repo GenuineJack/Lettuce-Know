@@ -509,8 +509,12 @@ console.log('\n[22] Tab bar + recalls browser');
   ok(await page.locator('details.recd').count() === 1, 'FDA filter narrows to 1');
   await page.click('[data-act="rfilter"][data-arg="all"]'); await page.waitForTimeout(200);
   await page.fill('#recq', 'acme'); await page.waitForTimeout(250);
-  const firms = await page.locator('.recd-firm').allInnerTexts();
-  ok(firms.length === 1 && /Acme/.test(firms[0]), 'search filters to the Acme recall ['+firms.join(',')+']');
+  const titles = await page.locator('.recd-title').allInnerTexts();
+  ok(titles.length === 1 && /Acme/.test(titles[0]), 'search filters to the Acme recall ['+titles.join(',')+']');
+  // The row leads with the product, not the reason category.
+  ok(/2 lb Acme Beef Patties/.test(titles[0]), 'row headline is the product ['+titles[0]+']');
+  const why = await page.locator('.recd-why').first().innerText();
+  ok(/Acme Meats/.test(why), 'row subline carries the firm ['+why+']');
   await page.fill('#recq', 'zzz-no-match'); await page.waitForTimeout(250);
   ok((await page.locator('#reclist .empty').count()) === 1, 'no-match search shows an empty state');
   // expanding a row shows the full card
@@ -677,6 +681,91 @@ console.log('\n[28] Appearance: light is the default even on a dark-mode device'
   eq(await page.getAttribute('html', 'data-theme'), 'dark', 'system on a dark device resolves dark');
   await page.emulateMedia({ colorScheme: 'light' }); await page.waitForTimeout(300);
   eq(await page.getAttribute('html', 'data-theme'), 'light', 'and follows the device when it changes');
+  await ctx.close();
+}
+
+console.log('\n[29] Recall cards: product first, category explained, firm recovered');
+{
+  // A USDA record shaped like the awkward real ones: no establishment name (it
+  // is buried in the contact blob), a category instead of a written reason,
+  // and a comma-joined state list with no spaces.
+  const rows = [{
+    field_title:'Produced Without Benefit of Inspection',
+    field_product_items:'<p>Cardboard boxes containing 100 pieces of "BUFFALO CHICKEN RANGOON" and "Sell By" dates from July 8, 2026, to June 29, 2027, represented on the label.</p>',
+    field_establishment:'', field_recall_reason:'Produced Without Benefit of Inspection',
+    field_recall_date:'2026-08-26', field_recall_classification:'Class I', field_active_notice:'True',
+    field_recall_number:'018-2026', field_states:'Maine,Massachusetts,New Hampshire,Rhode Island,Vermont',
+    field_company_media_contact:'Company Contact Shanghai Ravioli Corporation Jordan Wu, QC Manager 617-989-3833 shanghaicorp@gmail.com',
+    langcode:'English' }];
+  const { page, ctx, errs } = await newPage(browser);
+  await page.route(/fsis\.usda\.gov/, r => r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(rows)}));
+  await page.goto(BASE + '/#/recalls'); await page.waitForTimeout(900);
+  await page.click('[data-act="rfilter"][data-arg="USDA"]'); await page.waitForTimeout(250);
+
+  const title = await page.locator('.recd-title').first().innerText();
+  ok(/BUFFALO CHICKEN RANGOON/.test(title), 'list row leads with the product, not the category ['+title+']');
+  // Clipped, and clipped between words: the next character in the full text
+  // must not be a letter, or we cut a word in half ("…June 29, 2027, repres").
+  const full = 'Cardboard boxes containing 100 pieces of "BUFFALO CHICKEN RANGOON" and "Sell By" dates from July 8, 2026, to June 29, 2027, represented on the label.';
+  const stem = title.replace(/…$/, '');
+  ok(title.endsWith('…') && full.startsWith(stem) && !/[A-Za-z0-9]/.test(full[stem.length] || ' '),
+    'long headline clips on a word boundary ['+title.slice(-26)+']');
+  const sub = await page.locator('.recd-why').first().innerText();
+  ok(/Shanghai Ravioli Corporation/.test(sub), 'firm recovered from the contact blob ['+sub+']');
+  ok(/Produced without inspection/.test(sub), 'category shown in plain language ['+sub+']');
+
+  await page.locator('details.recd summary').first().click(); await page.waitForTimeout(250);
+  const card = await page.locator('details.recd[open] .card').innerText();
+  ok(/BUFFALO CHICKEN RANGOON/.test(card), 'detail card headline is the product');
+  ok(!/Not listed/.test(card), 'no "Not listed" firm row when the name is recoverable');
+  ok(/Recalled by\s*\n?\s*Shanghai Ravioli Corporation/.test(card), 'firm gets its own row ['+card.replace(/\n/g,'|')+']');
+  ok(/Jordan Wu/.test(card) && /617-989-3833/.test(card), 'contact person and number split out');
+  ok(/reasonable chance/.test(card), 'Class I explained in plain language');
+  ok(/without a USDA inspector present/.test(card), 'category gloss shown');
+  ok(/Maine, Massachusetts/.test(card), 'state list gets real separators');
+  eq((card.match(/Class I/g) || []).length, 1, 'class stated once, not twice');
+  ok(errs.length===0, 'no errors ('+errs.join('|')+')');
+  await ctx.close();
+}
+{
+  // No products listed, and a title that is just the category again — the way
+  // FSIS actually ships these. The category must not masquerade as a product.
+  const { page, ctx, errs } = await newPage(browser);
+  await page.route(/fsis\.usda\.gov/, r => r.fulfill({status:200,contentType:'application/json',body:JSON.stringify([{
+    field_title:'Import Violation', field_product_items:'', field_establishment:'', field_recall_reason:'Import Violation',
+    field_recall_date:'2026-08-17', field_recall_classification:'Class I', field_active_notice:'True',
+    field_recall_number:'017-2026', field_states:'', field_company_media_contact:'', langcode:'English' }])}));
+  await page.goto(BASE + '/#/recalls'); await page.waitForTimeout(900);
+  await page.click('[data-act="rfilter"][data-arg="USDA"]'); await page.waitForTimeout(250);
+  const title = await page.locator('.recd-title').first().innerText();
+  ok(/Products not listed by USDA/.test(title), 'missing product is stated, not faked ['+title+']');
+  await page.locator('details.recd summary').first().click(); await page.waitForTimeout(250);
+  const card = await page.locator('details.recd[open] .card').innerText();
+  ok(/didn't list the products/.test(card), 'detail card says the same');
+  ok(/Import violation/.test(card), 'category still shown as a tag');
+  ok(errs.length===0, 'no errors ('+errs.join('|')+')');
+  await ctx.close();
+}
+{
+  // A long distribution list collapses instead of eating the card; searching
+  // for the plain-language label finds the record it is shown on.
+  const { page, ctx, errs } = await newPage(browser);
+  await page.route(/fsis\.usda\.gov/, r => r.fulfill({status:200,contentType:'application/json',body:JSON.stringify([{
+    field_title:'Chicken Sausage', field_product_items:'12 oz Chicken Sausage',
+    field_establishment:'Example Packing Co.', field_recall_reason:'Misbranding,Unreported Allergens',
+    field_recall_date:'2026-08-10', field_recall_classification:'Class II', field_active_notice:'True',
+    field_recall_number:'016-2026', field_states:'Alabama,Alaska,Arizona,Arkansas,California,Colorado,Connecticut,Delaware',
+    field_company_media_contact:'', langcode:'English' }])}));
+  await page.goto(BASE + '/#/recalls'); await page.waitForTimeout(900);
+  await page.click('[data-act="rfilter"][data-arg="USDA"]'); await page.waitForTimeout(250);
+  await page.locator('details.recd summary').first().click(); await page.waitForTimeout(250);
+  ok(await page.locator('.statesd').count() === 1, 'eight states collapse into a disclosure');
+  const summary = await page.locator('.statesd summary').innerText();
+  ok(/8 states/.test(summary), 'disclosure names the count ['+summary+']');
+  ok(await page.locator('.rtag').count() === 2, 'both comma-joined categories become tags');
+  await page.fill('#recq', 'undeclared allergen'); await page.waitForTimeout(300);
+  ok(await page.locator('details.recd').count() === 1, 'search matches the label shown, not just the raw category');
+  ok(errs.length===0, 'no errors ('+errs.join('|')+')');
   await ctx.close();
 }
 

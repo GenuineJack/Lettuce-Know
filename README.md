@@ -30,11 +30,22 @@ test/                    — browser test suite (dev only; excluded from the dep
 Hash-based routing (`#/product/<code>`, `#/recalls`, `#/saved`, `#/settings`, `#/search/<query>`) makes results shareable URLs and gives the browser Back button real meaning. A bottom tab bar covers the four top-level screens:
 
 - **Home** — scan/type CTAs, live source status, a recall-count teaser, recent checks, and alert banners when a watched product newly matches a recall.
-- **Recalls** — the full index the scans are checked against, newest first, filterable by source and searchable by brand/product/reason.
+- **Recalls** — the full index the scans are checked against, newest first, filterable by source and searchable by brand/product/reason.  Rows lead with the recalled *product*, because that's the only field that reliably tells one record from the next; firm and reason ride underneath.
 - **Saved** — the watchlist. Watching a product from its result screen re-checks it against every data refresh; a new match raises a Home banner until the user views the result (which acknowledges it).
 - **Settings** — allergen switches (the 9 major US allergens, each showing the terms it matches) plus free-text avoid terms, a state picker (recalls that don't list your state get a "may not have reached you" note and sort lower — never hidden), and data controls. All stored on-device.
 
 The scan screen adds a pantry-check mode (scan several items in a row, get a summary), scan-from-photo, and a torch toggle on cameras that support it. The manifest declares app shortcuts and a GET share target, so sharing text containing a barcode into the installed PWA jumps straight to that product's result.
+
+## Reading a recall record
+
+The two feeds agree on shape but not on meaning, and the cards are built around that.
+
+FDA's `reason_for_recall` is a written sentence ("may be contaminated with *Listeria monocytogenes*"). USDA's `field_recall_reason` is one of a small fixed set of categories, sometimes several comma-joined ("Misbranding,Unreported Allergens"). Rendered identically — as the card's headline, which is what the app used to do — the USDA ones read as vague boilerplate and make unrelated recalls look like the same event. So USDA reasons are split, mapped to a plain-language label and one explanatory line (`REASON_GLOSS`), and shown as tags under "Why it was recalled"; FDA reasons are printed as written. The classification badge gets the same treatment (`CLASS_GLOSS`) — Class I/II/III is a code nobody carries around in their head.
+
+The headline is the *product*, on both the list row and the card. Everything else on the record — firm, class, contact, distribution — exists to help someone decide whether that headline is the box in their kitchen. Two consequences worth knowing:
+
+- FSIS falls back to the notice title when a record has no product items, and that title is often just the category again, so `productText()` drops a "product" that only restates the reason and the card says the record doesn't name one. Never print the category twice and call one of them a product.
+- FSIS leaves `field_establishment` blank on a fair share of records even though the company name is sitting in the contact blob (`Company Contact Shanghai Ravioli Corporation Jordan Wu, QC Manager 617-989-3833 …`). `parseContact()` splits that into firm / person / phone / email; the recovered firm is written back to `firm` at fetch time rather than used display-only, so it's searchable and available to brand matching too. It only accepts a name anchored on a corporate suffix — a bare personal name is not a company.
 
 ## Look and feel
 
